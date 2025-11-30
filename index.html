@@ -471,6 +471,8 @@
                     const parsed = JSON.parse(saved);
                     state = { ...state, ...parsed };
                     if(!state.purchaseCounts) state.purchaseCounts = {};
+                    // Fix for missing strategy in old saves
+                    if(!state.activeStrategy) state.activeStrategy = 'stocks'; 
                     if(chartInstance) updateChart(); 
                 }
             } catch (e) {}
