@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Фінансова Гонка: Remastered</title>
     
     <!-- Tailwind CSS -->
@@ -14,1146 +14,799 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; overflow-x: hidden; }
+        body { font-family: 'Nunito', sans-serif; background-color: #F8FAFC; overflow-x: hidden; touch-action: manipulation; }
 
-        /* Jar Styles */
-        .jar-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
-        .jar-container {
-            position: relative; height: 280px; background-color: #E2E8F0; border-radius: 0 0 12px 12px; overflow: hidden;
-            border: 1px solid #CBD5E1; border-top: none; cursor: ns-resize; touch-action: none; transition: border-color 0.2s;
+        /* --- TICKER --- */
+        .ticker-wrap {
+            position: fixed; top: 0; left: 0; width: 100%; overflow: hidden; height: 24px; background-color: #0f172a; 
+            padding-left: 100%; box-sizing: content-box; z-index: 100;
         }
-        .jar-container:hover { border-color: #94A3B8; }
+        .ticker {
+            display: inline-block; height: 24px; line-height: 24px; white-space: nowrap;
+            padding-right: 100%; box-sizing: content-box;
+            animation: ticker 40s linear infinite;
+        }
+        @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+        .ticker-item { display: inline-block; padding: 0 2rem; font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        
+        body { padding-top: 24px; }
+
+        /* --- VISUAL ROOM (COMPACT) --- */
+        .visual-room {
+            height: 100px;
+            background: linear-gradient(180deg, #A7F3D0 0%, #F1F5F9 100%);
+            position: relative; overflow: hidden; transition: all 0.5s ease;
+            border-bottom: 4px solid #CBD5E1;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+        /* Floor removed as requested */
+        .room-object {
+            position: absolute; bottom: 15px; font-size: 40px; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 3px 4px rgba(0,0,0,0.1));
+        }
+
+        /* --- JARS & THRESHOLDS --- */
+        .jar-container {
+            position: relative; height: 180px; background-color: #E2E8F0; 
+            border-radius: 0 0 12px 12px; overflow: hidden;
+            border: 2px solid #CBD5E1; border-top: none; cursor: ns-resize; touch-action: none; 
+            transition: box-shadow 0.3s;
+        }
         .jar-liquid {
             position: absolute; bottom: 0; left: 0; right: 0;
-            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            pointer-events: none;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
-            z-index: 10;
+            transition: height 0.1s linear; pointer-events: none; z-index: 10;
         }
-        .jar-surface {
-            position: absolute; top: 0; left: 0; right: 0; height: 0;
-            border-top: 2px solid rgba(255,255,255,0.7);
-            display: flex; align-items: center; justify-content: center;
-        }
-        .jar-handle {
-            width: 24px; height: 24px; background-color: white; border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.15); transform: translateY(-50%);
-            display: flex; align-items: center; justify-content: center;
-            color: #64748B; font-size: 10px; transition: transform 0.1s;
-        }
-        .jar-container:hover .jar-handle { transform: translateY(-50%) scale(1.15); }
-
-        /* MARKERS */
-        .jar-marker {
-            position: absolute; left: 0; right: 0; border-top: 1px dashed; pointer-events: none; z-index: 5;
-            font-size: 9px; font-weight: 800; padding-left: 6px; display: flex; align-items: flex-end; line-height: 0;
-            opacity: 0.7; transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .jar-marker span {
-            background: rgba(255,255,255,0.8); padding: 2px 4px; border-radius: 4px; transform: translateY(-50%); box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-        .marker-red { border-color: #F43F5E; color: #E11D48; }
-        .marker-green { border-color: #10B981; color: #059669; }
-        .marker-yellow { border-color: #F59E0B; color: #D97706; }
-        
-        /* Sidebar & Modals */
-        .report-panel {
-            position: fixed; z-index: 40; background: white; box-shadow: -5px 0 25px rgba(0,0,0,0.1);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @media (min-width: 768px) { .report-panel { top: 80px; right: 0; bottom: 0; width: 360px; border-left: 1px solid #E2E8F0; transform: translateX(100%); } .report-panel.open { transform: translateX(0); } }
-        @media (max-width: 767px) { .report-panel { left: 0; right: 0; bottom: 0; height: auto; max-height: 85vh; border-radius: 20px 20px 0 0; transform: translateY(100%); padding-bottom: 20px; } .report-panel.open { transform: translateY(0); } }
-
-        .jars-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
-        @media (min-width: 768px) { .jars-grid { grid-template-columns: repeat(5, 1fr); gap: 1rem; } }
-
-        .game-over-overlay { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(5px); z-index: 100; }
-        .btn-pulse { animation: pulse-ring 2s infinite; }
-        @keyframes pulse-ring { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(244, 63, 94, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
-        
-        /* Flow State Animation */
-        .flow-glow {
-            animation: flow-pulse 2s infinite alternate;
-            box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
-            border-color: #FBBF24 !important;
-        }
-        @keyframes flow-pulse {
-            0% { box-shadow: 0 0 10px rgba(251, 191, 36, 0.2); }
-            100% { box-shadow: 0 0 25px rgba(251, 191, 36, 0.6); }
+        .jar-drag-handle {
+            position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%);
+            width: 30px; height: 20px; background: white; border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); color: #94A3B8; display: flex; 
+            align-items: center; justify-content: center; font-size: 10px; z-index: 20;
         }
         
-        .highlight-jar { animation: highlight-bounce 2s ease-in-out infinite; box-shadow: 0 0 0 4px #F43F5E !important; border-color: #F43F5E !important; z-index: 20; }
-        @keyframes highlight-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-
-        .custom-tooltip {
-            visibility: hidden; width: 220px; background-color: #1e293b; color: #fff; text-align: left; border-radius: 8px; padding: 10px;
-            position: absolute; z-index: 50; bottom: 110%; left: 0; opacity: 0; transition: opacity 0.2s;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); font-weight: normal; line-height: 1.4; border: 1px solid #475569;
+        /* Threshold Line Styles */
+        .threshold-line {
+            position: absolute; left: 0; right: 0; 
+            border-top: 2px dashed rgba(0,0,0,0.3);
+            z-index: 15; pointer-events: none;
         }
-        .tooltip-container:hover .custom-tooltip { visibility: visible; opacity: 1; }
-
-        .info-overlay { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(3px); z-index: 80; }
-
-        .float-text {
-            position: absolute;
-            font-weight: 800;
-            pointer-events: none;
-            z-index: 100;
-            text-shadow: 0 2px 4px rgba(255,255,255,0.8);
-            animation: floatUp 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        .threshold-label {
+            position: absolute; right: 2px; bottom: 2px;
+            font-size: 8px; font-weight: 800; color: rgba(0,0,0,0.4);
+            text-transform: uppercase; background: rgba(255,255,255,0.5);
+            padding: 0 2px; border-radius: 2px;
         }
-        @keyframes floatUp {
-            0% { opacity: 0; transform: translateY(10px) scale(0.8); }
-            15% { opacity: 1; transform: translateY(0) scale(1.2); }
-            100% { opacity: 0; transform: translateY(-60px) scale(1); }
-        }
-
-        .shake-screen { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(2px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-            40%, 60% { transform: translate3d(4px, 0, 0); }
-        }
-
-        .game-toast {
-            position: fixed;
-            top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px);
-            background: rgba(15, 23, 42, 0.95); color: white; padding: 10px 20px; border-radius: 50px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px;
-            opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 90;
-            pointer-events: none; white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);
-        }
-        .game-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-        @media (min-width: 768px) { .game-toast { top: 90px; bottom: auto; } }
         
-        .room-icon { transition: all 0.5s ease; opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
-        .room-icon.active { opacity: 1; filter: grayscale(0%); transform: scale(1); }
-        .room-icon.just-unlocked { animation: unlock-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes unlock-pop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
-
-        /* XP BAR ANIMATION */
-        .xp-shine { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); animation: xp-shine 2s infinite; }
-        @keyframes xp-shine { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-
-        /* CONTEXTUAL NUDGES */
-        .nudge-arrow {
-            position: absolute; top: 45px; left: 50%; transform: translateX(-50%);
-            color: #F43F5E; font-size: 24px; z-index: 20; text-align: center;
-            animation: nudge-bounce 1s infinite;
-            pointer-events: none;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        .crit-pulse {
+            animation: pulse-red 1s infinite;
+            border-color: #F43F5E !important;
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.3);
         }
-        .nudge-arrow span { 
-            display: block; font-size: 10px; font-weight: 800; background: white; color: #F43F5E;
-            padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; 
-            margin-bottom: 2px; border: 1px solid #FECDD3;
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(244, 63, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
         }
-        @keyframes nudge-bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-8px); } }
-
-        .btn-danger-glow { 
-            animation: pulse-red 1.5s infinite; 
-            border-color: #F43F5E !important; background-color: #FEF2F2 !important; color: #E11D48 !important; 
-            box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.3) !important;
+        
+        /* --- UI ELEMENTS --- */
+        .rival-marker { 
+            position: absolute; top: -2px; bottom: -2px; width: 4px; background: #F43F5E; 
+            box-shadow: 0 0 8px #F43F5E; transition: left 0.5s ease; z-index: 20; border-radius: 2px;
         }
-        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); transform: scale(1); } 50% { transform: scale(1.02); } 100% { box-shadow: 0 0 0 10px rgba(244, 63, 94, 0); transform: scale(1); } }
-
-        .shop-bounce { animation: shop-bounce 2s infinite; color: #10B981 !important; transform-origin: center; }
-        @keyframes shop-bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } 60% { transform: translateY(-3px); } }
-
-        /* Strategy Card */
-        .strat-card { transition: all 0.2s; cursor: pointer; border: 2px solid transparent; }
-        .strat-card:hover { transform: translateY(-2px); }
-        .strat-card.active { border-color: #10B981; background-color: #ECFDF5; }
-
-        /* RIVAL AVATAR */
-        .rival-bubble {
-            position: absolute; bottom: 100%; right: 0; 
-            background: white; padding: 8px 12px; border-radius: 12px 12px 0 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #E2E8F0;
-            font-size: 11px; font-weight: bold; color: #475569; white-space: nowrap;
-            opacity: 0; transform: translateY(10px) scale(0.9);
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            pointer-events: none; z-index: 30;
+        .tooltip {
+            visibility: hidden; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+            background: #1e293b; color: white; padding: 6px 10px; border-radius: 6px; font-size: 11px;
+            white-space: nowrap; opacity: 0; transition: opacity 0.2s; z-index: 50; pointer-events: none;
+            margin-bottom: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .rival-bubble.show { opacity: 1; transform: translateY(-10px) scale(1); }
-        .rival-avatar { transition: transform 0.3s; }
-        .rival-avatar:hover { transform: scale(1.1); }
+        .tooltip::after {
+            content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+            border-width: 5px; border-style: solid; border-color: #1e293b transparent transparent transparent;
+        }
+        .has-tooltip:hover .tooltip { visibility: visible; opacity: 1; }
 
+        .xp-stripe {
+            background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
+            background-size: 1rem 1rem; animation: progress-stripes 1s linear infinite;
+        }
+        @keyframes progress-stripes { from { background-position: 1rem 0; } to { background-position: 0 0; } }
+        
+        .btn-push { transition: transform 0.1s, background-color 0.2s; }
+        .btn-push:active { transform: scale(0.95); }
+
+        /* --- TOAST --- */
+        .toast-container {
+            position: fixed; top: 90px; left: 50%; transform: translateX(-50%);
+            z-index: 120; pointer-events: none; width: 90%; max-width: 400px;
+        }
+        .toast {
+            background: rgba(30, 41, 59, 0.95); color: white; padding: 12px 16px; 
+            border-radius: 50px; margin-bottom: 10px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            display: flex; align-items: center; gap: 12px; font-size: 12px;
+            opacity: 0; transform: translateY(-20px); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; items-center; justify-content: center; flex-shrink: 0; }
+        .toast-warning .toast-icon { background: #F43F5E; }
+        .toast-success .toast-icon { background: #10B981; }
+
+        /* STRATEGY & SHOP CARDS */
+        .card-select { border: 2px solid transparent; transition: all 0.2s; cursor: pointer; }
+        .card-select:hover { transform: translateY(-2px); border-color: #cbd5e1; }
+        .card-select.active { border-color: #10B981; background-color: #F0FDF4; }
+        
+        /* SHOP ITEM */
+        .shop-item { transition: all 0.2s; }
+        .shop-item:active { transform: scale(0.98); }
+        .shop-item.disabled { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
     </style>
 </head>
-<body class="flex flex-col min-h-screen text-slate-800 select-none pb-24 md:pb-0">
+<body class="flex flex-col min-h-screen text-slate-800 pb-20 md:pb-0">
+
+    <!-- TICKER -->
+    <div class="ticker-wrap">
+        <div class="ticker" id="newsTicker">
+            <div class="ticker-item">Ринок: <span class="text-emerald-400">Бичачий тренд (+8%)</span></div>
+            <div class="ticker-item">Новини: Інфляція сповільнюється</div>
+            <div class="ticker-item">Порада: Тримайте >10% у Сейфі</div>
+            <div class="ticker-item">Ринок: <span class="text-rose-400">Крипта падає (-5%)</span></div>
+        </div>
+    </div>
 
     <!-- HEADER -->
-    <header class="bg-slate-900 text-white sticky top-0 z-50 shadow-xl border-b border-slate-700 transition-colors duration-500" id="mainHeader">
-        <div class="max-w-7xl mx-auto px-4 py-3">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                
-                <!-- Left: Goal -->
-                <div class="flex items-center gap-4 w-full md:w-auto flex-grow md:flex-grow-0">
-                    <div class="flex-grow">
-                        <div class="flex justify-between items-end mb-1">
-                            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider" id="goalTitle">Ціль: Подушка</div>
-                            <div class="text-xs font-bold text-emerald-400 tabular-nums" id="goalValue">0 / $5,000</div>
-                        </div>
-                        <div class="w-40 md:w-48 bg-slate-700 rounded-full h-2 overflow-hidden shadow-inner border border-slate-600">
-                            <div id="goalProgressBar" class="bg-emerald-500 h-full rounded-full transition-all duration-700 relative overflow-hidden" style="width: 0%">
-                                <div class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-2">
-                        <!-- Shop Button with ID -->
-                        <button id="shopBtn" onclick="openShop()" class="w-6 h-6 rounded-full bg-slate-700 hover:bg-emerald-600 text-slate-300 hover:text-white text-[10px] flex items-center justify-center transition-colors flex-shrink-0">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                        </button>
-                        <button id="soundBtn" class="w-6 h-6 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[10px] flex items-center justify-center transition-colors flex-shrink-0">
-                            <i class="fa-solid fa-volume-high"></i>
-                        </button>
-                        <button onclick="openInfoModal()" class="w-6 h-6 rounded-full bg-slate-700 hover:bg-slate-600 text-white text-[10px] flex items-center justify-center transition-colors flex-shrink-0 btn-pulse">
-                            <i class="fa-solid fa-info"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Center: Vitals -->
-                <div id="vitalsPanel" class="hidden md:flex gap-4 w-full md:w-auto bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-700 relative overflow-hidden justify-center transition-all duration-500">
-                    <div id="flowLabel" class="absolute inset-0 flex items-center justify-center bg-amber-500/10 opacity-0 transition-opacity pointer-events-none">
-                        <span class="text-[50px] font-black text-amber-500/20 uppercase tracking-widest rotate-12">FLOW</span>
-                    </div>
-
-                    <div class="flex flex-col w-24 relative z-10">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-[9px] uppercase font-bold text-slate-400">Здоров'я</span>
-                            <span id="hudHealthVal" class="text-[10px] font-bold text-white">100%</span>
-                        </div>
-                        <div class="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden border border-slate-600">
-                            <div id="hudHealthBar" class="bg-rose-500 h-full rounded-full transition-all duration-300" style="width: 100%"></div>
-                        </div>
-                    </div>
-                    <div class="flex flex-col w-24 border-l border-slate-700 pl-4 relative z-10">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-[9px] uppercase font-bold text-slate-400">Щастя</span>
-                            <span id="hudHappyVal" class="text-[10px] font-bold text-white">100%</span>
-                        </div>
-                        <div class="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden border border-slate-600">
-                            <div id="hudHappyBar" class="bg-amber-400 h-full rounded-full transition-all duration-300" style="width: 100%"></div>
+    <header class="bg-white border-b border-slate-200 sticky top-6 z-40 shadow-sm backdrop-blur-md bg-white/90">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+            
+            <!-- Left: Menu & Stats -->
+            <div class="flex items-center gap-3">
+                <button onclick="openMenu()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+                <div class="flex flex-col">
+                    <div class="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Ваш Капітал</div>
+                    <div class="flex items-baseline gap-2">
+                        <div id="netWorthDisplay" class="text-2xl font-black text-slate-800 leading-none">$0</div>
+                        <div class="text-[10px] font-bold text-rose-500 bg-rose-50 px-1.5 rounded border border-rose-100">
+                            VS <span id="rivalNetWorthDisplay">$0</span> у Джо
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Right: Action -->
-                <div class="flex items-center gap-4 w-full md:w-auto justify-end">
-                    <div class="text-right hidden lg:block">
-                        <div class="text-[9px] text-slate-400 uppercase tracking-widest">Капітал</div>
-                        <div id="hudNetWorth" class="font-mono font-bold text-lg text-emerald-400 tabular-nums">$0</div>
-                    </div>
-                    <button id="nextMonthBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-6 rounded-lg shadow-lg shadow-emerald-900/40 transform active:scale-95 transition-all flex items-center gap-2 text-xs uppercase tracking-wide">
-                        <span>Прожити Місяць</span>
-                        <i class="fa-solid fa-chevron-right"></i>
-                    </button>
-                </div>
+            <!-- Right: Shop & Action -->
+            <div class="flex gap-2">
+                <button onclick="openShop()" class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 flex items-center justify-center transition-colors shadow-sm relative">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <div id="shopBadge" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-white"></div>
+                </button>
+                <button id="nextMonthBtn" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-5 rounded-xl shadow-lg shadow-slate-900/20 btn-push flex items-center gap-2">
+                    <span class="hidden sm:inline">Наст. Місяць</span>
+                    <span class="sm:hidden">Далі</span>
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                </button>
             </div>
         </div>
     </header>
 
-    <main class="flex-grow max-w-7xl mx-auto w-full px-4 py-6 space-y-6 md:pr-4 lg:pr-8 transition-all duration-300" id="mainContent">
+    <main class="flex-grow max-w-4xl mx-auto w-full px-4 py-4 space-y-4">
 
-        <!-- ROOM -->
-        <section class="bg-slate-800 rounded-2xl p-4 shadow-lg border border-slate-700 relative overflow-hidden">
-            <div class="flex justify-between items-center mb-3 relative z-10">
-                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-layer-group"></i> Рівень життя</h3>
-                <div id="flowBadge" class="hidden px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[9px] font-bold rounded uppercase border border-amber-500/50 animate-pulse"><i class="fa-solid fa-bolt"></i> У Потоці (+10% Еф.)</div>
-            </div>
-            <div class="flex justify-between items-center gap-2 overflow-x-auto pb-2 md:pb-0">
-                <div class="flex flex-col items-center gap-2 min-w-[60px] room-icon active" id="lvl-0"><div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xl shadow-inner">📦</div><div class="text-[9px] text-slate-400 font-bold uppercase">Виживання</div></div>
-                <div class="h-0.5 flex-grow bg-slate-700 rounded-full"></div>
-                <div class="flex flex-col items-center gap-2 min-w-[60px] room-icon" id="lvl-1"><div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xl shadow-inner">🛏️</div><div class="text-[9px] text-slate-400 font-bold uppercase">Комфорт</div></div>
-                <div class="h-0.5 flex-grow bg-slate-700 rounded-full"></div>
-                <div class="flex flex-col items-center gap-2 min-w-[60px] room-icon" id="lvl-2"><div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xl shadow-inner">💻</div><div class="text-[9px] text-slate-400 font-bold uppercase">Свобода</div></div>
-                <div class="h-0.5 flex-grow bg-slate-700 rounded-full"></div>
-                <div class="flex flex-col items-center gap-2 min-w-[60px] room-icon" id="lvl-3"><div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xl shadow-inner">🏝️</div><div class="text-[9px] text-slate-400 font-bold uppercase">Мрія</div></div>
-            </div>
-            <div class="absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-1000" id="roomProgress" style="width: 0%"></div>
-        </section>
-
-        <!-- DASHBOARD -->
-        <section class="grid grid-cols-1 md:grid-cols-12 gap-4">
-            
-            <!-- Income Panel -->
-            <div class="md:col-span-4 lg:col-span-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between h-auto min-h-[14rem]">
-                <div>
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase">Зарплата</label>
-                        <div id="incomePenaltyBox" class="hidden relative tooltip-container cursor-help">
-                            <div class="flex items-center gap-1.5 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
-                                <i class="fa-solid fa-circle-exclamation text-rose-500 text-[10px]"></i>
-                                <span class="text-[9px] text-slate-500 font-medium"><span id="penaltyPercent" class="text-rose-600 font-bold tabular-nums">-0%</span></span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="relative group mb-3">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold group-focus-within:text-emerald-500 text-sm">$</span>
-                        <input type="number" id="incomeInput" value="4000" class="w-full pl-6 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-800 text-base transition-all tabular-nums">
-                    </div>
-
-                    <!-- CAREER PROGRESS BAR -->
-                    <div class="mb-3 bg-slate-50 p-2 rounded-lg border border-slate-100 relative overflow-hidden group tooltip-container">
-                        <div class="flex justify-between items-center mb-1 text-[9px] font-bold uppercase text-slate-400">
-                            <span class="flex items-center gap-1"><i class="fa-solid fa-briefcase text-blue-400"></i> Досвід (Кар'єра)</span>
-                            <span id="careerXpVal">0%</span>
-                        </div>
-                        <div class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                            <div id="careerXpBar" class="h-full bg-blue-500 transition-all duration-500 w-0 relative">
-                                <div class="xp-shine"></div>
-                            </div>
-                        </div>
-                        <div class="custom-tooltip">
-                            <div class="font-bold text-blue-400 mb-1 text-xs">Кар'єрний ріст</div>
-                            <p class="text-[10px] text-slate-300 leading-relaxed">Вкладайте в "Освіту", щоб заповнити шкалу та отримати підвищення.</p>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between text-xs font-bold text-slate-500 mt-1 pb-2 border-b border-slate-100">
-                        <span>На руки (Факт):</span>
-                        <span id="realIncomeVal" class="text-emerald-600 tabular-nums">$4,000</span>
-                    </div>
-                    
-                    <div class="mt-2 text-[10px] text-slate-500 flex flex-col gap-1.5">
-                        <div class="flex justify-between"><span>Заощадження (4%):</span><span class="text-emerald-600 font-bold tabular-nums" id="savingsInterestText">+$0/міс</span></div>
-                        <div class="flex justify-between flex-wrap">
-                            <div class="flex items-center gap-1">
-                                <span>Інвестиції:</span>
-                                <button onclick="openInvestMenu()" class="w-4 h-4 rounded bg-indigo-100 text-indigo-600 hover:bg-indigo-200 flex items-center justify-center text-[9px] transition-colors"><i class="fa-solid fa-gear"></i></button>
-                            </div>
-                            <span class="text-indigo-600 font-bold tabular-nums" id="investmentInterestText">+$0/міс</span>
-                        </div>
-                        <div id="investStratDisplay" class="text-[9px] text-right text-indigo-400 font-medium mt-0.5">Акції (10%)</div>
-                        <!-- NEW ASSET INCOME -->
-                        <div id="assetsIncomeRow" class="flex justify-between hidden pt-1 border-t border-slate-100 mt-1"><span>Активы:</span><span class="text-emerald-600 font-bold tabular-nums" id="assetsIncomeText">+$0/міс</span></div>
-                    </div>
-                </div>
-                
-                <div id="debtRepayContainer" class="hidden mt-2 pt-2 border-t border-slate-100">
-                    <button id="repayDebtBtn" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-1.5 rounded-lg border border-rose-200 text-xs transition-colors flex items-center justify-center gap-1 btn-pulse">
-                        <i class="fa-solid fa-fire"></i> Погасити: <span id="currentDebtVal" class="tabular-nums">$0</span>
-                    </button>
-                </div>
-
-                <div class="mt-auto pt-3 flex items-center justify-between border-t border-slate-100">
-                    <div>
-                        <div class="text-[9px] font-bold text-slate-400 uppercase">Баланс</div>
-                        <div id="balanceBadgeContainer"><div id="balanceBadge" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-500 inline-block mt-0.5">OK</div></div>
+        <!-- 1. FREEDOM & CHART -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <div class="mb-4">
+                <div class="flex justify-between items-end mb-1">
+                    <div class="flex flex-col">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Мета: Свобода (F.I.R.E.)</span>
+                        <span class="text-xs font-bold text-slate-700">Накопичено: <span id="freedomCurrentPct">0%</span></span>
                     </div>
                     <div class="text-right">
-                        <div class="flex items-baseline gap-0.5 justify-end"><span id="totalPercent" class="text-2xl font-black text-slate-800 tabular-nums">100</span><span class="text-xs font-bold text-slate-400">%</span></div>
+                         <span id="freedomYearsText" class="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">∞ років</span>
                     </div>
+                </div>
+                <div class="relative h-4 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-100">
+                    <div id="freedomBar" class="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-700" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-[9px] text-slate-400 mt-1 font-bold">
+                    <span>Старт</span>
+                    <span>Ціль: <span id="freedomGoalVal">$720k</span></span>
                 </div>
             </div>
 
-            <!-- VS Chart -->
-            <div class="md:col-span-8 lg:col-span-9 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 relative flex flex-col h-auto min-h-[14rem]">
-                <div class="mb-1 flex justify-between items-center relative">
-                    <h3 class="text-[10px] font-bold text-slate-400 uppercase">СТРУКТУРА КАПІТАЛУ</h3>
-                    <!-- RIVAL WIDGET -->
-                    <div class="flex items-center gap-2">
-                        <div class="relative">
-                            <div id="rivalBubble" class="rival-bubble">Непогано...</div>
-                            <div class="w-8 h-8 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center text-lg shadow-sm rival-avatar" id="rivalAvatar">
-                                😐
-                            </div>
+            <div class="h-48 w-full relative border-t border-slate-100 pt-2">
+                <canvas id="mainChart"></canvas>
+            </div>
+            
+            <!-- Custom Legend & Joe's Bubble -->
+            <div class="flex justify-between items-center mt-2 px-1">
+                <!-- Custom Legend -->
+                <div class="flex gap-2 text-[9px] sm:text-[10px]">
+                    <div class="flex items-center gap-1"><div class="w-2 h-2 rounded bg-emerald-500 opacity-60"></div><span class="text-slate-500 font-bold">Сейф</span></div>
+                    <div class="flex items-center gap-1"><div class="w-2 h-2 rounded bg-indigo-500 opacity-60"></div><span class="text-slate-500 font-bold">Ризик</span></div>
+                    <div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full border border-rose-500 border-dashed"></div><span class="text-slate-500 font-bold">Джо</span></div>
+                </div>
+                
+                <!-- Bubble (Wider, no truncate) -->
+                <div id="rivalBubble" class="text-[9px] sm:text-[10px] bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200 text-slate-500 italic text-right max-w-[240px]">
+                    <span class="font-bold not-italic text-rose-500">Джо:</span> "..."
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. VISUAL ROOM & VITALS -->
+        <div class="relative">
+            <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-1"><i class="fa-solid fa-layer-group mr-1"></i> Рівень Життя</h2>
+            <div class="visual-room" id="visualRoom">
+                <div id="roomObjects"></div>
+            </div>
+            
+            <div class="absolute bottom-1 left-3 right-3 flex justify-between gap-2">
+                <div class="bg-white/95 backdrop-blur rounded-lg p-1.5 shadow border border-slate-200 flex items-center gap-2 has-tooltip cursor-help flex-1" id="healthWidget">
+                    <div class="tooltip" id="healthTooltip">Потрібно >50% на Життя</div>
+                    <div class="w-6 h-6 rounded bg-rose-100 text-rose-500 flex items-center justify-center text-xs"><i class="fa-solid fa-heart"></i></div>
+                    <div class="flex-grow">
+                        <div class="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                            <div id="hpBar" class="h-full bg-rose-500 transition-all duration-300" style="width: 100%"></div>
                         </div>
-                        <div class="hidden sm:block text-[9px] text-slate-400 bg-slate-50 px-2 py-0.5 rounded">Джо (Суперник)</div>
                     </div>
                 </div>
-                <div class="flex-grow w-full relative h-48">
-                    <canvas id="historyChart"></canvas>
+                <div class="bg-white/95 backdrop-blur rounded-lg p-1.5 shadow border border-slate-200 flex items-center gap-2 has-tooltip cursor-help flex-1" id="happyWidget">
+                    <div class="tooltip" id="happyTooltip">Потрібно >20% на Радість</div>
+                    <div class="w-6 h-6 rounded bg-amber-100 text-amber-500 flex items-center justify-center text-xs"><i class="fa-solid fa-face-smile"></i></div>
+                    <div class="flex-grow">
+                        <div class="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                            <div id="happyBar" class="h-full bg-amber-500 transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Jars -->
-        <section>
-            <div class="flex items-center gap-2 mb-3 px-1">
-                <i class="fa-solid fa-hand-pointer text-slate-400 animate-bounce text-sm"></i>
-                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Розподіл бюджету (Тягніть за рівень)</h2>
+        <!-- 3. JARS -->
+        <div>
+            <div class="flex justify-between items-center mb-2 px-1">
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest"><i class="fa-solid fa-scale-balanced mr-1"></i> Розподіл Бюджету</h2>
             </div>
-            <div class="jars-grid" id="jarsContainer"></div>
-        </section>
+            <div class="grid grid-cols-5 gap-2" id="jarsContainer"></div>
+            <div class="text-[10px] text-slate-400 text-center mt-2 leading-tight">
+                "Сейф" <i class="fa-solid fa-shield-halved text-emerald-500 mx-0.5"></i> — це буфер обміну для інших категорій.
+            </div>
+        </div>
 
+        <!-- 4. DETAILS -->
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                <div class="text-[9px] font-bold text-slate-400 uppercase mb-1">Зарплата</div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-lg font-black text-slate-800" id="incomeDisplay">$4,000</span>
+                    <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 rounded" id="incomeBoostDisplay">+0%</span>
+                </div>
+                <div class="text-[9px] font-bold text-slate-400 uppercase flex justify-between mb-0.5">
+                    <span>Кар'єра (XP)</span>
+                    <span id="xpText">0/100</span>
+                </div>
+                <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div id="xpBar" class="h-full bg-blue-500 xp-stripe transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="text-[9px] font-bold text-slate-400 uppercase">Пасивний дохід</div>
+                        <div class="text-[9px] font-bold text-indigo-500" id="passiveIncomeVal">+$0</div>
+                    </div>
+                    <!-- STRATEGY SELECTOR -->
+                    <button onclick="openStrategyModal()" id="strategyBtn" class="w-full text-left text-[10px] bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded px-2 py-1 flex justify-between items-center transition-colors">
+                        <span><i class="fa-solid fa-chart-line mr-1"></i> <span id="strategyName">Акції</span></span>
+                        <i class="fa-solid fa-chevron-down text-slate-300"></i>
+                    </button>
+                </div>
+                <div class="h-px bg-slate-100 my-1.5"></div>
+                <div class="flex justify-between items-center">
+                    <div class="text-[9px] font-bold text-slate-400 uppercase">Потрібно на місяць</div>
+                    <div class="text-sm font-bold text-slate-700" id="monthlyExpensesVal">$2,400</div>
+                </div>
+            </div>
+        </div>
     </main>
 
-    <!-- TOAST NOTIFICATION -->
-    <div id="gameToast" class="game-toast">
-        <div id="toastIcon" class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-xs"><i class="fa-solid fa-check"></i></div>
-        <div>
-            <div class="text-[10px] uppercase text-slate-400 font-bold" id="toastTitle">Місяць прожито</div>
-            <div class="text-xs font-bold" id="toastMessage">Накопичено +$400</div>
+    <!-- SHOP MODAL -->
+    <div id="shopModal" class="fixed inset-0 z-[100] bg-slate-900/90 hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-all duration-300 flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-slate-100 bg-indigo-50 flex justify-between items-center">
+                <h2 class="font-bold text-indigo-900 flex items-center gap-2"><i class="fa-solid fa-store"></i> Магазин</h2>
+                <button onclick="closeShop()" class="text-indigo-300 hover:text-indigo-500"><i class="fa-solid fa-xmark fa-lg"></i></button>
+            </div>
+            <div class="p-3 bg-indigo-100/50 text-center">
+                <div class="text-[10px] uppercase font-bold text-indigo-400">Доступно в Сейфі</div>
+                <div class="text-xl font-black text-indigo-600" id="shopBalanceDisplay">$0</div>
+            </div>
+            <div class="p-4 space-y-3 overflow-y-auto flex-grow" id="shopItemsContainer"></div>
         </div>
     </div>
 
-    <!-- DILEMMA MODAL -->
-    <div id="dilemmaModal" class="fixed inset-0 z-[90] game-over-overlay hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-all">
-            <div class="bg-slate-900 p-4 text-white flex items-center gap-3">
-                <div id="dilemmaIcon" class="w-10 h-10 rounded-lg bg-indigo-500 flex items-center justify-center text-lg"><i class="fa-solid fa-question"></i></div>
+    <!-- EVENT MODAL -->
+    <div id="eventModal" class="fixed inset-0 z-[100] bg-slate-900/90 hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-all duration-300" id="eventCard">
+            <div class="bg-indigo-600 p-4 text-white flex gap-4 items-center">
+                <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl">
+                    <i id="eventIcon" class="fa-solid fa-bolt"></i>
+                </div>
                 <div>
-                    <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Непростий вибір</div>
-                    <h2 id="dilemmaTitle" class="text-lg font-bold leading-tight">Подія</h2>
+                    <div class="text-[10px] font-bold opacity-75 uppercase tracking-wider">Подія</div>
+                    <h2 id="eventTitle" class="text-xl font-bold leading-tight">Заголовок</h2>
                 </div>
             </div>
             <div class="p-6">
-                <p id="dilemmaDesc" class="text-sm text-slate-600 mb-6 leading-relaxed">Опис ситуації...</p>
-                <div class="space-y-3" id="dilemmaOptions">
-                    <!-- Options injected here -->
+                <p id="eventDesc" class="text-slate-600 mb-6 text-sm leading-relaxed">Опис події...</p>
+                <div class="space-y-3" id="eventOptions"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STRATEGY MODAL -->
+    <div id="strategyModal" class="fixed inset-0 z-[100] bg-slate-900/90 hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-all duration-300">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center">
+                <h2 class="font-bold text-slate-800">Стратегія Інвестицій</h2>
+                <button onclick="closeStrategyModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 space-y-3" id="strategyOptions"></div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="fixed inset-0 z-[95] bg-slate-900/90 hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 transform scale-95 transition-all">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-black text-slate-800">Меню</h2>
+                <button onclick="closeMenu()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark fa-lg"></i></button>
+            </div>
+            <div class="space-y-3">
+                <button onclick="saveGame(true)" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i> Зберегти
+                </button>
+                <button onclick="resetGame()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-left"></i> Нова гра
+                </button>
+                <div class="text-[10px] text-center text-slate-400 pt-2">
+                    Автозбереження увімкнено
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- SHOP MODAL -->
-    <div id="shopModal" class="fixed inset-0 z-[95] game-over-overlay hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-all">
-            <div class="bg-emerald-900 p-4 text-white flex justify-between items-center">
-                <h2 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-shop"></i> Магазин</h2>
-                <button onclick="closeShop()" class="text-emerald-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="p-4 bg-slate-50 border-b border-slate-200 text-center">
-                <div class="text-xs text-slate-500 uppercase font-bold">Доступно</div>
-                <div class="text-2xl font-black text-emerald-600" id="shopBalance">$0</div>
-            </div>
-            <div class="p-4 space-y-3 max-h-[60vh] overflow-y-auto" id="shopItems"></div>
-        </div>
-    </div>
+    <!-- TOAST NOTIFICATION -->
+    <div id="toastContainer" class="toast-container"></div>
 
-    <!-- INVEST STRATEGY MODAL -->
-    <div id="investModal" class="fixed inset-0 z-[95] game-over-overlay hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-all">
-            <div class="bg-indigo-900 p-4 text-white flex justify-between items-center">
-                <h2 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-chart-pie"></i> Стратегія</h2>
-                <button onclick="closeInvestMenu()" class="text-indigo-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="p-4 bg-slate-50 border-b border-slate-200 text-center text-xs text-slate-500">
-                Оберіть ризик та дохідність портфеля.
-            </div>
-            <div class="p-4 space-y-3" id="investStrategies">
-                <!-- Strategies injected here -->
-            </div>
+    <!-- GAME OVER -->
+    <div id="endGameModal" class="fixed inset-0 z-[100] bg-slate-900/95 hidden flex items-center justify-center p-6 opacity-0 transition-opacity duration-500">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <div id="endIcon" class="text-5xl mb-4">💀</div>
+            <h2 id="endTitle" class="text-2xl font-black mb-2 text-slate-800">GAME OVER</h2>
+            <p id="endDesc" class="text-sm text-slate-600 mb-6">...</p>
+            <!-- Fixed Reset Button (No Confirm) -->
+            <button onclick="resetGame(true)" class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:scale-105 transition-transform">Почати Знову</button>
         </div>
-    </div>
-
-    <!-- REPORT SIDEBAR -->
-    <div id="reportPanel" class="report-panel flex flex-col">
-        <div class="w-full flex justify-center pt-3 pb-1 md:hidden"><div class="w-12 h-1.5 bg-slate-300 rounded-full"></div></div>
-        <div class="p-5 flex-grow overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <div><div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Звіт</div><h2 class="text-xl font-bold text-slate-800">Місяць <span id="reportMonthNum">1</span></h2></div>
-                <button onclick="closeReport()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div id="reportContent" class="space-y-4"></div>
-        </div>
-        <div class="p-4 border-t border-slate-100 bg-white"><button onclick="closeReport()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95">Далі</button></div>
-    </div>
-    
-    <div id="mobileOverlay" onclick="closeReport()" class="fixed inset-0 bg-black/20 z-30 hidden md:hidden transition-opacity opacity-0"></div>
-
-    <!-- INFO / RULES MODAL -->
-    <div id="infoModal" class="fixed inset-0 info-overlay hidden flex items-center justify-center p-4 transition-all duration-300 opacity-0">
-        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md transform scale-95 transition-all duration-300 overflow-hidden text-white">
-            <div class="p-6 border-b border-slate-700 flex justify-between items-center">
-                <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-flag-checkered"></i> Меню</h2>
-                <button onclick="closeInfoModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark fa-lg"></i></button>
-            </div>
-            <div class="p-6 space-y-4 text-sm text-slate-300">
-                <div id="startMenuContent">
-                    <p class="mb-4"><strong>Ціль:</strong> Накопичити капітал, поки Здоров'я та Щастя не впали до 0.</p>
-                    <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 mb-4">
-                        <strong class="text-white block mb-1">🔥 Нові механіки:</strong>
-                        <ul class="list-disc pl-4 space-y-1 text-xs">
-                            <li><strong>Інвестиції:</strong> Обирайте ризик (Облігації, Акції, Крипта).</li>
-                            <li><strong>Сюжети:</strong> Ваші рішення мають наслідки через місяці.</li>
-                            <li><strong>Активи:</strong> Купуйте нерухомість для пасивного доходу.</li>
-                            <li><strong>Джо:</strong> Тепер він реагує на ваші дії!</li>
-                        </ul>
-                    </div>
-                    <div id="resumeBtnContainer" class="hidden mb-2">
-                        <button onclick="closeInfoModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2"><i class="fa-solid fa-play"></i> Продовжити гру</button>
-                        <div class="text-center text-[10px] text-slate-500 mt-1">Знайдено збереження</div>
-                    </div>
-                    <button onclick="resetGame()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl font-bold shadow-lg mt-2"><i class="fa-solid fa-rotate-right"></i> Нова гра</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- GAME OVER / WIN -->
-    <div id="gameOverScreen" class="fixed inset-0 z-[100] game-over-overlay hidden flex flex-col items-center justify-center text-white p-6 text-center opacity-0 transition-opacity duration-1000">
-        <div class="w-20 h-20 rounded-full bg-rose-600 flex items-center justify-center text-3xl mb-4 shadow-[0_0_30px_rgba(225,29,72,0.6)] animate-pulse"><i id="deathIcon" class="fa-solid fa-skull"></i></div>
-        <h1 class="text-3xl font-black mb-1">ГРА ЗАКІНЧЕНА</h1>
-        <p id="deathReason" class="text-lg text-rose-300 font-medium mb-6 max-w-sm text-sm">Причина...</p>
-        <button onclick="resetGame()" class="bg-white text-slate-900 hover:bg-slate-200 font-bold py-2.5 px-8 rounded-full text-sm uppercase transition hover:scale-105 shadow-xl">Заново</button>
-    </div>
-
-    <div id="winScreen" class="fixed inset-0 z-[100] game-over-overlay hidden flex flex-col items-center justify-center text-white p-6 text-center opacity-0 transition-opacity duration-1000 bg-slate-900/95">
-        <div class="w-24 h-24 rounded-full bg-emerald-500 flex items-center justify-center text-4xl mb-6 shadow-[0_0_50px_rgba(16,185,129,0.5)] animate-bounce"><i class="fa-solid fa-trophy"></i></div>
-        <h1 class="text-4xl font-black mb-2 text-emerald-400 tracking-tight">ПЕРЕМОГА!</h1>
-        <p class="text-lg text-slate-300 font-medium mb-8 max-w-md">Ви досягли фінансової свободи!</p>
-        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 mb-8 w-full max-w-sm text-left space-y-4">
-             <div class="flex justify-between border-b border-slate-700 pb-2"><span class="text-slate-400 text-xs uppercase">Минуло часу</span><span class="font-bold"><span id="winMonths">0</span> міс.</span></div>
-             <div class="flex justify-between"><span class="text-slate-400 text-xs uppercase">Капітал</span><span class="font-bold text-white" id="winNetWorth">$0</span></div>
-        </div>
-        <button onclick="resetGame()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-10 rounded-full text-sm uppercase transition hover:scale-105 shadow-xl">Почати заново</button>
     </div>
 
     <script>
-        const CONFIG = { phase1Goal: 5000, phase2Goal: 1000, baseIncome: 4000, rates: { savings: 0.04, investments: 0.10, debt: 0.15 } };
-        
+        // --- HAPTICS ---
+        function triggerHaptic(pattern = 10) {
+            if (navigator.vibrate) navigator.vibrate(pattern);
+        }
+
+        // --- CONFIG ---
         const JARS = [
-            { id: 'nec', name: 'Необхідне', def: 60, color: '#64748B', liquid: '#94A3B8', icon: 'fa-house', type: 'exp' }, 
-            { id: 'fun', name: 'Розваги', def: 10, color: '#F59E0B', liquid: '#FBBF24', icon: 'fa-champagne-glasses', type: 'exp' }, 
-            { id: 'edu', name: 'Освіта', def: 10, color: '#3B82F6', liquid: '#60A5FA', icon: 'fa-book', type: 'exp' }, 
-            { id: 'sav', name: 'Заощадження', def: 10, color: '#10B981', liquid: '#34D399', icon: 'fa-piggy-bank', type: 'save' }, 
-            { id: 'inv', name: 'Інвестиції', def: 10, color: '#6366F1', liquid: '#818CF8', icon: 'fa-chart-line', type: 'invest' }
+            { id: 'nec', name: 'Життя', icon: 'fa-house', color: '#64748B', liq: '#94A3B8', def: 60, min: 20 },
+            { id: 'fun', name: 'Радість', icon: 'fa-gamepad', color: '#F59E0B', liq: '#FCD34D', def: 10, min: 5 },
+            { id: 'edu', name: 'Розвиток', icon: 'fa-graduation-cap', color: '#3B82F6', liq: '#60A5FA', def: 10, min: 0 },
+            { id: 'sav', name: 'Сейф', icon: 'fa-shield-halved', color: '#10B981', liq: '#34D399', def: 10, min: 0 },
+            { id: 'inv', name: 'Ризик', icon: 'fa-rocket', color: '#6366F1', liq: '#818CF8', def: 10, min: 0 }
         ];
+
+        const STRATEGIES = {
+            'bonds': { name: 'Облігації', rate: 0.05, vol: 0.02, desc: 'Надійно. 5% річних.', icon: 'fa-scale-balanced', color: 'text-emerald-600' },
+            'stocks': { name: 'Акції', rate: 0.10, vol: 0.10, desc: 'Баланс. 10% річних.', icon: 'fa-chart-line', color: 'text-blue-600' },
+            'crypto': { name: 'Крипта', rate: 0.25, vol: 0.40, desc: 'Азарт. 25% річних.', icon: 'fa-bitcoin-sign', color: 'text-rose-600' }
+        };
 
         const SHOP_ITEMS = [
-            { id: 'mattress', name: 'Ортопедичний матрац', cost: 800, icon: 'fa-bed', desc: "Здоров'я падає на 20% повільніше.", effect: { healthDecay: 0.8 } },
-            { id: 'console', name: 'Ігровая консоль', cost: 1500, icon: 'fa-gamepad', desc: 'Щастя падає на 20% повільніше.', effect: { happyDecay: 0.8 } },
-            { id: 'broker', name: 'Особистий брокер', cost: 2500, icon: 'fa-user-tie', desc: 'Дохідність інвестицій +2% річних.', effect: { investRateFlat: 0.02 } },
-            // REAL ASSETS
-            { id: 'sportscar', name: 'Спорткар', cost: 15000, icon: 'fa-car-sport', desc: 'Щастя не падає нижче 50%. Витрати -$200/міс.', effect: { minHappy: 50, passiveExpense: 200 }, taunt: "Пф, компенсуєш комплекси?" },
-            { id: 'studio', name: 'Студія під оренду', cost: 30000, icon: 'fa-building', desc: 'Пасивний дохід +$150/міс. Стабільність.', effect: { passiveIncome: 150 }, taunt: "Тепер ти лендлорд? Ну-ну." }
+            { id: 'weekend', name: 'Вихідні за містом', cost: 300, type: 'consumable', icon: 'fa-campground', desc: '+30 Щастя', effect: (s) => s.happiness = Math.min(100, s.happiness + 30) },
+            { id: 'checkup', name: 'Медогляд', cost: 300, type: 'consumable', icon: 'fa-user-doctor', desc: '+30 Здоров\'я', effect: (s) => s.health = Math.min(100, s.health + 30) },
+            { id: 'gym', name: 'Абонемент у зал', cost: 800, type: 'permanent', icon: 'fa-dumbbell', desc: 'Здоров\'я падає повільніше', unique: true },
+            { id: 'console', name: 'Ігрова консоль', cost: 800, type: 'permanent', icon: 'fa-gamepad', desc: 'Щастя падає повільніше', unique: true },
+            { id: 'course', name: 'Онлайн Курс', cost: 1200, type: 'consumable', icon: 'fa-laptop-code', desc: '+50 XP Кар\'єри', effect: (s) => s.careerXP += 50 }
         ];
-
-        const INVEST_STRATEGIES = {
-            safe: { id: 'safe', name: 'Облігації', rate: 0.05, risk: 0.00, color: 'text-emerald-500', desc: 'Стабільно. 5% річних, 0% ризику.', taunt: "Нудно, зате надійно." },
-            balanced: { id: 'balanced', name: 'Акції', rate: 0.10, risk: 0.05, color: 'text-blue-500', desc: 'Баланс. 10% річних, ризик 5%.', taunt: "Класика." },
-            risky: { id: 'risky', name: 'Крипта', rate: 0.25, risk: 0.15, color: 'text-rose-500', desc: 'Азарт. 25% річних, ризик 15%.', taunt: "Ризикуєш усім? Поважаю." }
-        };
-
-        const ACHIEVEMENTS = [
-            { id: 'scrooge', title: 'Скряга', text: 'Накопичити $1000 і не витрачати на розваги 3 місяці.', check: (s) => s.savings >= 1000 && s.lowFunStreak >= 3 },
-            { id: 'wolf', title: 'Вовк з Уолл-стріт', text: 'Пасивний дохід > $500/міс.', check: (s, passive) => passive >= 500 },
-            { id: 'survivor', title: 'Той, що вижив', text: "Відновити здоров'я з <15% до 100%.", check: (s) => s.wasCriticalHealth && s.health >= 100 }
-        ];
-
-        const STORIES = {
-            'startup': {
-                title: 'Стартап друга',
-                duration: 6,
-                onComplete: () => {
-                    if(Math.random() > 0.6) {
-                        state.savings += 5000;
-                        return { title: "Злетів!", text: "Стартап друга вистрілив! Ви отримали частку $5,000.", type: 'good' };
-                    } else {
-                        return { title: "Провал", text: "Стартап друга прогорів. Гроші втрачено.", type: 'bad' };
-                    }
-                }
-            },
-            'art': {
-                title: 'Дивна картина',
-                duration: 3,
-                onComplete: () => {
-                    if(Math.random() > 0.5) {
-                        state.savings += 1000;
-                        return { title: "Шедевр!", text: "Експерт оцінив вашу картину в $1000!", type: 'good' };
-                    }
-                    return { title: "Підробка", text: "Картина виявилася дешевою репродукцією.", type: 'neutral' };
-                }
-            },
-            'mba': {
-                title: 'MBA Навчання',
-                duration: 8,
-                onComplete: () => {
-                    state.baseIncome += 500;
-                    return { title: "Диплом MBA", text: "Ви закінчили навчання! Зарплата зросла на $500.", type: 'good' };
-                }
-            }
-        };
 
         const DILEMMAS = [
-            { id: 'tooth', title: 'Зубний біль', text: 'Зуб мудрості вирішив, що пора. Біль пекельний.', icon: 'fa-tooth', options: [ { text: 'У клініку (Дорого)', cost: 400, health: 5, happy: 0, msg: 'Дорого, але не боляче.' }, { text: 'Терпіти та пити таблетки', cost: 20, health: -15, happy: -10, msg: 'Ви зекономили, але страждаєте.' } ] },
-            { id: 'startup', title: 'Інвестиція', text: 'Друг відкриває стартап. Просить $1000.', icon: 'fa-rocket', options: [ { text: 'Вкластися ($1000)', cost: 1000, startStory: 'startup', msg: 'Ви стали інвестором. Чекаємо результатів...' }, { text: 'Відмова', cost: 0, msg: 'Ви вирішили не ризикувати.' } ] },
-            { id: 'art', title: 'Розпродаж', text: 'Дивна картина на гаражному розпродажі за $200.', icon: 'fa-palette', options: [ { text: 'Купити ($200)', cost: 200, startStory: 'art', msg: 'Куплено. А раптом шедевр?' }, { text: 'Пройти повз', cost: 0, msg: 'Мотлох нам не потрібен.' } ] },
-            { id: 'mba', title: 'Навчання MBA', text: 'Престижний курс. Дорого, але перспективно.', icon: 'fa-user-graduate', options: [ { text: 'Оплатити ($2000)', cost: 2000, startStory: 'mba', msg: 'Ви почали навчання. Важко, але корисно.' }, { text: 'Занадто дорого', cost: 0, msg: 'Можливо іншим разом.' } ] }
+            { id: 'tooth', title: 'Зубний Біль', text: 'Зуб мудрости вирішив все зіпсувати. Біль нестерпний.', icon: 'fa-tooth', options: [{ text: 'Лікувати (-$400)', cost: 400, health: 5, happy: 5 }, { text: 'Терпіти', cost: 0, health: -15, happy: -20 }] },
+            { id: 'car', title: 'Поломка Авто', text: 'Машина не заводиться. Потрібен ремонт або автобус.', icon: 'fa-car-burst', options: [{ text: 'Ремонт (-$600)', cost: 600, health: 0, happy: 5 }, { text: 'Пішки', cost: 0, health: 5, happy: -15 }] },
+            { id: 'startup', title: 'Стартап Друга', text: 'Друг просит $1000 на "геніальну ідею" (Ларьок з шаурмою).', icon: 'fa-rocket', options: [{ text: 'Інвестувати (-$1000)', cost: 1000, effect: 'risky_invest' }, { text: 'Відмова', cost: 0, happy: -5 }] },
+            { id: 'mba', title: 'Курси MBA', text: 'Гаряча пропозиція! Навчання за $2000. Обіцяють ріст ЗП.', icon: 'fa-user-graduate', options: [{ text: 'Купити (-$2000)', cost: 2000, xp: 80, happy: -5 }, { text: 'Немає грошей', cost: 0, happy: 0 }] }
         ];
 
-        const EVENTS = [
-            { text: "КРИЗА! Обвал ринку на 25%!", type: 'crash', crash: 0.25, rivalMod: -0.10, icon: 'fa-chart-line-down', taunt: "О боже, мої акції!" }, 
-            { text: "Корекція ринку (-10%).", type: 'bad', crash: 0.10, rivalMod: -0.05, icon: 'fa-arrow-trend-down', taunt: "Ринок лихоманить..." }
-        ];
-        
-        const RIVAL_TAUNTS = [
-            { trigger: 'lead_big', text: "Наздоганяй, черепахо!", mood: '😎' },
-            { trigger: 'lead_small', text: "Я все ще попереду.", mood: '😏' },
-            { trigger: 'lose_small', text: "Гей, пригальмуй!", mood: '😰' },
-            { trigger: 'lose_big', text: "Це ненадовго...", mood: '😤' },
-            { trigger: 'crash', text: "О боже, мої гроші!", mood: '😱' }
-        ];
+        const RIVAL_PHRASES = [ "Тихіше їдеш — далі будеш.", "У банку надійно, а ти ризикуєш.", "Мої 4% капают, я спокійний.", "Складний відсоток працює на мене.", "Жодного стресу, тільки депозит." ];
 
-        let state = { 
-            month: 1, phase: 1, savings: 0, investments: 0, debt: 0, baseIncome: CONFIG.baseIncome, 
-            allocations: {}, health: 100, happiness: 100, 
-            history: { labels: [0], savingsData: [0], investmentsData: [0], rivalData: [0] }, 
-            rivalNetWorth: 0, isDead: false, isWon: false,
-            flowStreak: 0, isFlow: false, isMuted: true, // Muted by default to be safe
-            unlockedAchievements: [], lowFunStreak: 0, wasCriticalHealth: false,
-            inventory: [], modifiers: { healthDecay: 1, happyDecay: 1, investRateFlat: 0 },
-            careerXP: 0, activeStrategy: 'balanced',
-            activeStories: [] // NEW
+        let state = {
+            month: 1, baseIncome: 4000, incomeMultiplier: 1.0,
+            netWorth: 0, rivalNetWorth: 0, savings: 0, investments: 0,
+            allocations: {}, health: 100, happiness: 100, careerXP: 0,
+            activeStrategy: 'stocks', inventory: [],
+            purchaseCounts: {},
+            history: { labels: [], savings: [], investments: [], rival: [] }
         };
-        
-        function triggerHaptic(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
+
         JARS.forEach(j => state.allocations[j.id] = j.def);
-        let els = {}, chartInstance = null, isDragging = false, currentDragJarId = null;
-
-        // NO AUDIO ENGINE
-
-        function saveGame() { try { localStorage.setItem('finRaceSave', JSON.stringify(state)); } catch(e) {} }
-        function loadGame() { try { const saved = localStorage.getItem('finRaceSave'); if (saved) return JSON.parse(saved); } catch(e) {} return null; }
-        function resetGame() {
-            localStorage.removeItem('finRaceSave');
-            state = { 
-                month: 1, phase: 1, savings: 0, investments: 0, debt: 0, baseIncome: CONFIG.baseIncome, 
-                allocations: {}, health: 100, happiness: 100, 
-                history: { labels: [0], savingsData: [0], investmentsData: [0], rivalData: [0] }, 
-                rivalNetWorth: 0, isDead: false, isWon: false,
-                flowStreak: 0, isFlow: false, isMuted: true,
-                unlockedAchievements: [], lowFunStreak: 0, wasCriticalHealth: false,
-                inventory: [], modifiers: { healthDecay: 1, happyDecay: 1, investRateFlat: 0 },
-                careerXP: 0, activeStrategy: 'balanced', activeStories: []
-            };
-            JARS.forEach(j => state.allocations[j.id] = j.def);
-            els.incomeInput.value = state.baseIncome;
-            els.resumeBtnContainer.classList.add('hidden');
-            els.gameOverScreen.classList.add('hidden');
-            els.winScreen.classList.add('hidden');
-            els.gameOverScreen.classList.add('opacity-0');
-            closeInfoModal();
-            if(chartInstance) chartInstance.destroy();
-            initChart(); renderJars(); updateUI(); renderRoom();
-            showToast('Нова гра', 'Хай щастить!', 'good');
-        }
+        let chartInstance, isDragging = false, activeJarId = null;
 
         function init() {
-            const ids = ['jarsContainer','incomeInput','realIncomeVal','incomePenaltyBox','penaltyPercent','hudHealthBar','hudHealthVal','hudHappyBar','hudHappyVal',
-                         'hudNetWorth','savingsInterestText','investmentInterestText','goalTitle','goalValue','goalProgressBar',
-                         'infoModal','reportPanel','mobileOverlay','reportMonthNum','reportContent','dilemmaModal',
-                         'gameOverScreen','deathReason','deathIcon','winScreen','roomProgress','vitalsPanel','flowBadge','flowLabel',
-                         'historyChart', 'soundBtn', 'resumeBtnContainer', 'shopModal', 'shopBalance', 'shopItems', 'careerXpBar', 'careerXpVal',
-                         'shopBtn', 'repayDebtBtn', 'investModal', 'investStrategies', 'investStratDisplay', 'assetsIncomeRow', 'assetsIncomeText', 'rivalAvatar', 'rivalBubble']; 
-            ids.forEach(id => {
-                const el = document.getElementById(id);
-                if(el) els[id] = el;
-            });
-
-            const savedState = loadGame();
-            if (savedState) {
-                state = { ...state, ...savedState };
-                if(!state.modifiers) state.modifiers = { healthDecay: 1, happyDecay: 1, investRateFlat: 0 };
-                if(!state.inventory) state.inventory = [];
-                if(state.careerXP === undefined) state.careerXP = 0;
-                if(!state.activeStrategy) state.activeStrategy = 'balanced';
-                if(!state.activeStories) state.activeStories = []; // Migration
-                if(!state.history.labels.length) state.history = { labels: [0], savingsData: [0], investmentsData: [0], rivalData: [0] };
-                els.resumeBtnContainer.classList.remove('hidden');
-            } else { JARS.forEach(j => state.allocations[j.id] = j.def); }
-
-            renderJars(); initChart(); updateUI(); renderRoom();
-            els.incomeInput.value = state.baseIncome;
-            els.incomeInput.addEventListener('input', (e) => { state.baseIncome = Math.max(0, parseInt(e.target.value) || 0); updateUI(); });
-            document.getElementById('nextMonthBtn').addEventListener('click', () => runTurnCycle()); 
-            if(els.repayDebtBtn) els.repayDebtBtn.addEventListener('click', repayDebt);
-            if(els.soundBtn) els.soundBtn.style.display = 'none';
-
+            renderJars(); initChart(); loadGame(); updateUI();
             window.addEventListener('mouseup', endDrag); window.addEventListener('touchend', endDrag);
-            window.addEventListener('mousemove', onDragMove); window.addEventListener('touchmove', onDragMove, { passive: false });
-            setTimeout(openInfoModal, 500);
+            window.addEventListener('mousemove', onDrag); window.addEventListener('touchmove', onDrag, { passive: false });
+            document.getElementById('nextMonthBtn').addEventListener('click', nextMonth);
         }
 
-        // --- RIVAL LOGIC ---
-        function updateRivalMood(event) {
-            const net = state.savings + state.investments - state.debt;
-            const diff = net - state.rivalNetWorth;
-            let mood = '😐';
-            let taunt = '';
-
-            // Event reaction priority
-            if (event && event.taunt) {
-                mood = '😱'; // Panic on crash usually
-                taunt = event.taunt;
-            } else {
-                // Status check
-                if (diff > 5000) { mood = '😤'; taunt = RIVAL_TAUNTS.find(t=>t.trigger==='lose_big').text; }
-                else if (diff > 0) { mood = '😰'; taunt = RIVAL_TAUNTS.find(t=>t.trigger==='lose_small').text; }
-                else if (diff > -5000) { mood = '😏'; taunt = RIVAL_TAUNTS.find(t=>t.trigger==='lead_small').text; }
-                else { mood = '😎'; taunt = RIVAL_TAUNTS.find(t=>t.trigger==='lead_big').text; }
-                
-                // Chance to NOT say anything if nothing special happened
-                if (Math.random() > 0.3) taunt = ''; 
-            }
-            
-            els.rivalAvatar.innerText = mood;
-            if (taunt) showRivalBubble(taunt);
+        function saveGame(manual = false) {
+            try { localStorage.setItem('finRaceSave', JSON.stringify(state)); if (manual) { showToast('Гру успішно збережено!', 'success'); closeMenu(); } } catch (e) {}
         }
-
-        function showRivalBubble(text) {
-            els.rivalBubble.innerText = text;
-            els.rivalBubble.classList.add('show');
-            setTimeout(() => els.rivalBubble.classList.remove('show'), 3000);
-        }
-
-        // --- INVEST STRATEGY ---
-        window.openInvestMenu = function() {
-            els.investStrategies.innerHTML = '';
-            for(let key in INVEST_STRATEGIES) {
-                const s = INVEST_STRATEGIES[key];
-                const isActive = state.activeStrategy === key;
-                const el = document.createElement('div');
-                el.className = `strat-card p-3 rounded-xl border bg-white flex items-center gap-3 ${isActive ? 'active' : 'border-slate-200'}`;
-                el.onclick = () => selectStrategy(key);
-                el.innerHTML = `
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 font-bold text-xs ${s.color}"><i class="fa-solid fa-chart-pie"></i></div>
-                    <div class="flex-grow">
-                        <div class="font-bold text-sm text-slate-800">${s.name}</div>
-                        <div class="text-[10px] text-slate-500">${s.desc}</div>
-                    </div>
-                    ${isActive ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : ''}
-                `;
-                els.investStrategies.appendChild(el);
-            }
-            els.investModal.classList.remove('hidden'); setTimeout(() => els.investModal.classList.remove('opacity-0'), 10);
-        }
-        window.closeInvestMenu = function() { els.investModal.classList.add('opacity-0'); setTimeout(() => els.investModal.classList.add('hidden'), 300); }
-        window.selectStrategy = function(key) {
-            state.activeStrategy = key;
-            updateUI();
-            closeInvestMenu();
-            showToast('Стратегія змінена', INVEST_STRATEGIES[key].name, 'neutral');
-            if (INVEST_STRATEGIES[key].taunt) showRivalBubble(INVEST_STRATEGIES[key].taunt);
-        }
-
-        window.openShop = function() {
-            els.shopBalance.innerText = '$' + Math.floor(state.savings).toLocaleString();
-            els.shopItems.innerHTML = '';
-            SHOP_ITEMS.forEach(item => {
-                const isOwned = state.inventory.includes(item.id);
-                const canAfford = state.savings >= item.cost;
-                const el = document.createElement('div');
-                el.className = "flex items-center gap-3 p-3 rounded-xl border " + (isOwned ? "bg-emerald-50 border-emerald-200" : "bg-white border-slate-200");
-                el.innerHTML = `<div class="w-10 h-10 rounded-full flex items-center justify-center text-lg ${isOwned ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}"><i class="fa-solid ${item.icon}"></i></div><div class="flex-grow"><div class="font-bold text-sm text-slate-800">${item.name}</div><div class="text-[10px] text-slate-500">${item.desc}</div></div>${isOwned ? `<div class="text-xs font-bold text-emerald-600"><i class="fa-solid fa-check"></i> Куплено</div>` : `<button onclick="buyItem('${item.id}')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${canAfford ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}">$${item.cost.toLocaleString()}</button>`}`;
-                els.shopItems.appendChild(el);
-            });
-            els.shopModal.classList.remove('hidden'); setTimeout(() => els.shopModal.classList.remove('opacity-0'), 10);
+        function loadGame() {
+            try {
+                const saved = localStorage.getItem('finRaceSave');
+                if (saved) { 
+                    const parsed = JSON.parse(saved);
+                    state = { ...state, ...parsed };
+                    if(!state.purchaseCounts) state.purchaseCounts = {};
+                    if(chartInstance) updateChart(); 
+                }
+            } catch (e) {}
         }
         
-        window.closeShop = function() { els.shopModal.classList.add('opacity-0'); setTimeout(() => els.shopModal.classList.add('hidden'), 300); }
-
-        window.buyItem = function(id) {
-            const item = SHOP_ITEMS.find(i => i.id === id);
-            if (!item || state.savings < item.cost || state.inventory.includes(id)) return;
-            state.savings -= item.cost; state.inventory.push(id);
-            if (item.effect.healthDecay) state.modifiers.healthDecay *= item.effect.healthDecay;
-            if (item.effect.happyDecay) state.modifiers.happyDecay *= item.effect.happyDecay;
-            if (item.effect.investRateFlat) state.modifiers.investRateFlat += item.effect.investRateFlat;
-            saveGame(); updateUI(); openShop(); showToast('Покупка успішна!', item.name + ' додано.', 'good');
-            if (item.taunt) showRivalBubble(item.taunt);
-        }
-
-        window.openInfoModal = function() { els.infoModal.classList.remove('hidden'); setTimeout(() => els.infoModal.classList.remove('opacity-0'), 10); }
-        window.closeInfoModal = function() { els.infoModal.classList.add('opacity-0'); setTimeout(() => els.infoModal.classList.add('hidden'), 300); }
-
-        function startDrag(jarId) { if(state.isDead || state.isWon) return; isDragging = true; currentDragJarId = jarId; triggerHaptic(5); }
-        function endDrag() { isDragging = false; currentDragJarId = null; }
-        function onDragMove(e) {
-            if (!isDragging || !currentDragJarId) return;
-            e.preventDefault();
-            const container = document.getElementById(`jar-cont-${currentDragJarId}`);
-            if (!container) return;
-            const rect = container.getBoundingClientRect();
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            let percent = ((rect.bottom - clientY) / rect.height) * 100;
-            state.allocations[currentDragJarId] = Math.round(Math.max(0, Math.min(100, percent)));
-            if (currentDragJarId !== 'sav') {
-                let bufferId = 'sav'; if (currentDragJarId === 'sav') bufferId = 'inv'; 
-                let used = 0; for(let key in state.allocations) if(key !== bufferId) used += state.allocations[key];
-                state.allocations[bufferId] = Math.max(0, 100 - used);
-            }
-            updateUI();
-        }
-
-        function renderJars() {
-            els.jarsContainer.innerHTML = '';
-            JARS.forEach(jar => {
-                const card = document.createElement('div');
-                card.className = 'jar-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-64 select-none';
+        // REFACTORED RESET
+        function resetGame(force = false) { 
+            if(force || confirm("Ви впевнені? Весь прогрес буде скинуто.")) { 
+                localStorage.removeItem('finRaceSave'); 
+                state = {
+                    month: 1, baseIncome: 4000, incomeMultiplier: 1.0,
+                    netWorth: 0, rivalNetWorth: 0, savings: 0, investments: 0,
+                    allocations: {}, health: 100, happiness: 100, careerXP: 0,
+                    activeStrategy: 'stocks', inventory: [],
+                    purchaseCounts: {},
+                    history: { labels: [], savings: [], investments: [], rival: [] }
+                };
+                JARS.forEach(j => state.allocations[j.id] = j.def);
+                if(chartInstance) { chartInstance.data.labels=[]; chartInstance.data.datasets.forEach(d=>d.data=[]); chartInstance.update(); }
                 
-                let nudgeHtml = '';
-                if (jar.id === 'nec') nudgeHtml = '<div id="nudge-nec" class="nudge-arrow hidden"><span>Мало!</span><i class="fa-solid fa-arrow-down"></i></div>';
-                if (jar.id === 'fun') nudgeHtml = '<div id="nudge-fun" class="nudge-arrow hidden"><span>Мало!</span><i class="fa-solid fa-arrow-down"></i></div>';
+                const egm = document.getElementById('endGameModal');
+                egm.classList.add('opacity-0');
+                setTimeout(() => egm.classList.add('hidden'), 300);
+                
+                document.getElementById('settingsModal').classList.add('hidden');
+                updateUI();
+                showToast("Гру скинуто", "info");
+                triggerHaptic([50, 50]);
+            } 
+        }
 
-                card.innerHTML = `<div class="p-2 bg-white z-10 border-b border-slate-100 pointer-events-none text-center relative"><div class="flex justify-center items-center gap-1.5 mb-1"><div class="w-5 h-5 rounded bg-slate-50 flex items-center justify-center text-[10px]" style="color:${jar.color}"><i class="fa-solid ${jar.icon}"></i></div><h3 class="font-bold text-slate-700 text-[10px] uppercase truncate">${jar.name}</h3></div><div class="flex justify-center items-baseline gap-1"><span id="pct-${jar.id}" class="text-[10px] font-bold text-slate-400 tabular-nums">0%</span><span id="val-${jar.id}" class="font-bold text-slate-800 text-xs tabular-nums">$0</span></div></div>
-                ${nudgeHtml}
-                <div id="jar-cont-${jar.id}" class="jar-container flex-grow relative w-full group cursor-ns-resize bg-slate-50"><div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: linear-gradient(#cbd5e1 1px, transparent 1px); background-size: 100% 20px;"></div><div id="liq-${jar.id}" class="jar-liquid w-full absolute bottom-0 transition-all duration-150 ease-out pointer-events-none" style="background-color: ${jar.liquid}; height: ${state.allocations[jar.id]}%;"><div class="jar-surface absolute top-0 w-full h-0 border-t-2 border-white/50 flex justify-center"><div class="jar-handle w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center -translate-y-1/2 text-slate-400 text-[8px] group-hover:scale-110 transition-transform"><i class="fa-solid fa-grip-lines"></i></div></div></div><div id="markers-${jar.id}" class="absolute inset-0 pointer-events-none"></div></div>`;
-                els.jarsContainer.appendChild(card);
-                const cont = card.querySelector('.jar-container');
-                cont.addEventListener('mousedown', () => startDrag(jar.id));
-                cont.addEventListener('touchstart', (e) => { startDrag(jar.id); onDragMove(e); }, { passive: false });
-                const mCont = document.getElementById(`markers-${jar.id}`);
-                if (jar.id === 'nec') { createMarker(mCont, 40, 'HP Crit', 'marker-red'); createMarker(mCont, 55, 'HP OK', 'marker-green'); } 
-                else if (jar.id === 'fun' || jar.id === 'edu') { createMarker(mCont, 0, 'Happy OK', 'marker-yellow', `d-ok-${jar.id}`); createMarker(mCont, 0, 'Happy+', 'marker-green', `d-good-${jar.id}`); }
+        // --- SHOP ---
+        function openShop() {
+            document.getElementById('shopBalanceDisplay').innerText = '$' + Math.floor(state.savings).toLocaleString();
+            const c = document.getElementById('shopItemsContainer'); c.innerHTML = '';
+            SHOP_ITEMS.forEach(item => {
+                const owned = state.inventory.includes(item.id);
+                // Calculate dynamic cost
+                const count = state.purchaseCounts[item.id] || 0;
+                const currentCost = item.type === 'consumable' ? Math.floor(item.cost * Math.pow(1.5, count)) : item.cost;
+                
+                const afford = state.savings >= currentCost;
+                
+                const el = document.createElement('div');
+                el.className = `flex items-center gap-3 p-3 rounded-xl border ${owned ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 shop-item'}`;
+                if(!afford && !owned) el.classList.add('disabled');
+                
+                el.innerHTML = `
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center ${owned ? 'bg-emerald-500 text-white' : 'bg-indigo-100 text-indigo-500'} text-lg"><i class="fa-solid ${item.icon}"></i></div>
+                    <div class="flex-grow">
+                        <div class="font-bold text-sm text-slate-800">${item.name}</div>
+                        <div class="text-[10px] text-slate-500">${item.desc}</div>
+                    </div>
+                    ${owned ? '<div class="text-xs font-bold text-emerald-600"><i class="fa-solid fa-check"></i></div>' : 
+                    `<button onclick="buyItem('${item.id}')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 transition">$${currentCost.toLocaleString()}</button>`}
+                `;
+                c.appendChild(el);
             });
+            const m = document.getElementById('shopModal'); m.classList.remove('hidden'); setTimeout(()=>m.classList.remove('opacity-0'),10);
+        }
+        function closeShop() { const m = document.getElementById('shopModal'); m.classList.add('opacity-0'); setTimeout(()=>m.classList.add('hidden'),300); }
+        
+        function buyItem(id) {
+            const item = SHOP_ITEMS.find(i=>i.id===id);
+            const count = state.purchaseCounts[id] || 0;
+            const currentCost = item.type === 'consumable' ? Math.floor(item.cost * Math.pow(1.5, count)) : item.cost;
+
+            if(state.savings >= currentCost) {
+                state.savings -= currentCost;
+                
+                if(item.type === 'permanent') {
+                    state.inventory.push(id);
+                } else {
+                    // Increment purchase count for dynamic pricing
+                    state.purchaseCounts[id] = count + 1;
+                }
+                
+                if(item.effect) item.effect(state);
+                
+                // Check xp overflow for course
+                if(state.careerXP >= 100) { 
+                    state.careerXP -= 100; 
+                    state.incomeMultiplier += 0.1; 
+                    showToast("Підвищення!", "success"); 
+                    triggerHaptic([50, 50, 50]); 
+                }
+                
+                showToast(`Куплено: ${item.name}`, 'success');
+                updateUI(); 
+                openShop(); // Re-render shop to update prices
+                saveGame();
+            }
         }
 
-        function createMarker(container, bottomPct, text, colorClass, id=null) {
-            const m = document.createElement('div');
-            m.className = `jar-marker ${colorClass}`;
-            m.style.bottom = bottomPct + '%';
-            if(id) m.id = id;
-            m.innerHTML = `<span>${text}</span>`;
-            container.appendChild(m);
+        // --- STRATEGY ---
+        function openStrategyModal() {
+            const m = document.getElementById('strategyModal'); const c = document.getElementById('strategyOptions'); c.innerHTML = '';
+            Object.keys(STRATEGIES).forEach(key => {
+                const s = STRATEGIES[key]; const isActive = state.activeStrategy === key;
+                const el = document.createElement('div'); el.className = `card-select p-3 rounded-xl border flex items-center gap-3 ${isActive ? 'active' : 'border-slate-200 bg-white'}`;
+                el.onclick = () => { state.activeStrategy = key; updateUI(); closeStrategyModal(); showToast(`Стратегія: ${s.name}`); triggerHaptic(10); };
+                el.innerHTML = `<div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center ${s.color} text-lg"><i class="fa-solid ${s.icon}"></i></div><div class="flex-grow"><div class="font-bold text-sm text-slate-800">${s.name}</div><div class="text-[10px] text-slate-500">${s.desc}</div></div>${isActive ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : ''}`;
+                c.appendChild(el);
+            });
+            m.classList.remove('hidden'); setTimeout(()=>m.classList.remove('opacity-0'),10);
+        }
+        function closeStrategyModal() { const m = document.getElementById('strategyModal'); m.classList.add('opacity-0'); setTimeout(()=>m.classList.add('hidden'),300); }
+
+        function openMenu() { const m = document.getElementById('settingsModal'); m.classList.remove('hidden'); setTimeout(()=>m.classList.remove('opacity-0'),10); }
+        function closeMenu() { const m = document.getElementById('settingsModal'); m.classList.add('opacity-0'); setTimeout(()=>m.classList.add('hidden'),300); }
+
+        function nextMonth() {
+            triggerHaptic(20);
+            processMonthLogic();
+            if (Math.random() < 0.3) { const d = DILEMMAS[Math.floor(Math.random() * DILEMMAS.length)]; showDilemma(d); }
+            saveGame();
         }
 
-        function calculateRealIncome() {
-            let penalty = 0;
-            if (state.health < 50) penalty += (50 - state.health) * 0.015; 
-            if (state.happiness < 50) penalty += (50 - state.happiness) * 0.01;
-            penalty = Math.min(0.9, penalty);
-            let amount = Math.floor(state.baseIncome * (1 - penalty));
-            if (state.isFlow) amount = Math.floor(amount * 1.1);
-            return { realIncome: amount, penaltyPct: penalty };
-        }
-        function calculatePassiveIncome() { 
-            const strat = INVEST_STRATEGIES[state.activeStrategy] || INVEST_STRATEGIES.balanced;
-            const invRate = state.phase === 1 ? CONFIG.rates.savings : strat.rate + state.modifiers.investRateFlat;
+        function processMonthLogic() {
+            const eduPct = state.allocations.edu;
+            const xpGain = eduPct > 5 ? (eduPct - 5) * 1.5 : 0; 
+            state.careerXP += xpGain;
+            if(state.careerXP >= 100) { state.careerXP -= 100; state.incomeMultiplier += 0.10; triggerConfetti(); triggerHaptic([50, 50, 50]); showToast("Підвищення! Зарплата +10%", "success"); }
+
+            let healthPenalty = 1.0;
+            if (state.health < 50) healthPenalty = 0.8;
+            if (state.health < 20) healthPenalty = 0.5;
+            const realIncome = (state.baseIncome * state.incomeMultiplier) * healthPenalty;
+
+            JARS.forEach(j => {
+                const amt = realIncome * (state.allocations[j.id] / 100);
+                if (j.id === 'sav') state.savings += amt;
+                if (j.id === 'inv') state.investments += amt;
+            });
+
+            state.savings += state.savings * (0.04 / 12);
             
-            // Calculate Asset Income/Expense
-            let assetIncome = 0;
-            let assetExpense = 0;
-            state.inventory.forEach(itemId => {
-                const item = SHOP_ITEMS.find(i => i.id === itemId);
-                if (item && item.effect.passiveIncome) assetIncome += item.effect.passiveIncome;
-                if (item && item.effect.passiveExpense) assetExpense += item.effect.passiveExpense;
-            });
-
-            return { 
-                savIncome: state.savings * (CONFIG.rates.savings / 12), 
-                invIncome: state.investments * (invRate / 12), 
-                debtCost: state.debt * (CONFIG.rates.debt / 12), 
-                assetIncome: assetIncome,
-                assetExpense: assetExpense,
-                totalPassive: (state.savings * (CONFIG.rates.savings / 12)) + (state.investments * (invRate / 12)) + assetIncome - assetExpense
-            }; 
-        }
-
-        function renderRoom() {
-            const net = state.savings + state.investments - state.debt;
-            const thresholds = [0, 5000, 20000, 100000]; 
-            let currentLvl = 0;
-            if (net >= thresholds[2]) currentLvl = 3; else if (net >= thresholds[1]) currentLvl = 2; else if (net >= thresholds[0] + 1000) currentLvl = 1;
-            if (state.lastLvl !== undefined && currentLvl > state.lastLvl) { triggerHaptic([50, 50, 50]); }
-            state.lastLvl = currentLvl;
-            for(let i=0; i<=3; i++) {
-                const el = document.getElementById(`lvl-${i}`);
-                if(el) {
-                    if (i <= currentLvl) { if (!el.classList.contains('active')) { el.classList.add('active', 'just-unlocked'); setTimeout(() => el.classList.remove('just-unlocked'), 1000); } } 
-                    else { el.classList.remove('active'); }
+            // --- INVESTMENT LOGIC ---
+            const strat = STRATEGIES[state.activeStrategy];
+            
+            // 1. Calculate standard volatility
+            let marketMood = (Math.random() * (strat.vol * 2)) - strat.vol;
+            
+            // 2. Specific Stock Market Events override (User Request)
+            if (state.activeStrategy === 'stocks') {
+                const eventRoll = Math.random();
+                
+                if (eventRoll < 0.01) { 
+                    // 1% Chance: CRASH -20%
+                    marketMood = -0.20;
+                    showToast("💥 ОБВАЛ РИНКУ! Акції впали на 20%", "warning");
+                    triggerHaptic([100, 50, 100, 50, 100]);
+                } else if (eventRoll < 0.05) {
+                    // 4% Chance: Correction -10%
+                    marketMood = -0.10;
+                    showToast("📉 Сильна корекція! Акції -10%", "warning");
+                    triggerHaptic([50, 50]);
+                } else if (eventRoll < 0.15) {
+                    // 10% Chance: Correction -5%
+                    marketMood = -0.05;
+                    showToast("📉 Корекція ринку (-5%)", "warning");
+                    triggerHaptic([30]);
                 }
             }
-            let nextGoal = thresholds[1]; if(currentLvl === 1) nextGoal = thresholds[2]; if(currentLvl >= 2) nextGoal = thresholds[3];
-            const pct = Math.min(100, Math.max(0, (net / nextGoal) * 100));
-            els.roomProgress.style.width = pct + '%';
+
+            // Crypto/General Alerts
+            if (state.activeStrategy === 'crypto' && marketMood < -0.15) { 
+                showToast("Крипта обвалилася! (-20%!)", "warning"); triggerHaptic([50, 100, 50]); 
+            } else if (marketMood > 0.12) {
+                showToast("Бичачий тренд! Ринки ростуть.", "success");
+            }
+            
+            const growthRate = (strat.rate / 12) + marketMood;
+            state.investments = Math.max(0, state.investments + state.investments * growthRate); 
+            
+            state.netWorth = state.savings + state.investments;
+
+            const rivalGrowth = state.rivalNetWorth * (0.04 / 12); 
+            state.rivalNetWorth += (state.baseIncome * 1.2) * 0.2 + rivalGrowth;
+
+            const nec = state.allocations.nec; const fun = state.allocations.fun;
+            let hDecay = 0, fDecay = 0;
+            if (nec < 40) hDecay = 12; else if (nec < 50) hDecay = 5; else state.health = Math.min(100, state.health + 3);
+            if (fun < 10) fDecay = 10; else if (fun < 20) fDecay = 4; else state.happiness = Math.min(100, state.happiness + 3);
+            
+            if (state.inventory.includes('gym')) hDecay *= 0.5;
+            if (state.inventory.includes('console')) fDecay *= 0.5;
+            
+            state.health = Math.max(0, state.health - hDecay);
+            state.happiness = Math.max(0, state.happiness - fDecay);
+
+            if (state.health < 30) { showToast("⚠️ Здоров'я критично низьке!", "warning"); triggerHaptic([100, 50, 100]); }
+            if (state.happiness < 30) { showToast("⚠️ Депресія близько!", "warning"); triggerHaptic([100, 50, 100]); }
+
+            checkGameOver();
+            state.month++;
+            state.history.labels.push(state.month); state.history.savings.push(state.savings); state.history.investments.push(state.investments); state.history.rival.push(state.rivalNetWorth);
+            updateUI(); updateChart();
         }
 
-        function checkFlowState() {
-            if (state.health >= 80 && state.happiness >= 80) state.flowStreak++; else { state.flowStreak = 0; state.isFlow = false; }
-            if (state.flowStreak >= 3 && !state.isFlow) { state.isFlow = true; triggerHaptic([50, 50, 100]); showToast('У ПОТОЦІ!', 'Ви увійшли в режим високої ефективності (+10% дохід).', 'good'); }
+        function showDilemma(d) {
+            const m = document.getElementById('eventModal');
+            document.getElementById('eventTitle').innerText = d.title; document.getElementById('eventDesc').innerText = d.text;
+            document.getElementById('eventIcon').className = `fa-solid ${d.icon}`;
+            const c = document.getElementById('eventOptions'); c.innerHTML = '';
+            d.options.forEach(opt => {
+                const b = document.createElement('button');
+                b.className = "w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-500 transition-all flex justify-between group";
+                b.innerHTML = `<span class="font-bold text-sm">${opt.text}</span><i class="fa-solid fa-arrow-right text-slate-300 group-hover:text-indigo-500"></i>`;
+                b.onclick = () => resolveDilemma(opt);
+                c.appendChild(b);
+            });
+            m.classList.remove('hidden'); setTimeout(()=>m.classList.remove('opacity-0'),10);
+        }
+
+        function resolveDilemma(opt) {
+            if (opt.cost) {
+                if (state.savings >= opt.cost) state.savings -= opt.cost;
+                else {
+                    const rem = opt.cost - state.savings; state.savings = 0;
+                    if (state.investments >= rem) state.investments -= rem; else { state.investments=0; state.happiness-=20; }
+                }
+            }
+            if (opt.health) state.health = Math.max(0, Math.min(100, state.health + opt.health));
+            if (opt.happy) state.happiness = Math.max(0, Math.min(100, state.happiness + opt.happy));
+            if (opt.xp) { state.careerXP += opt.xp; if(state.careerXP>=100) { state.careerXP-=100; state.incomeMultiplier+=0.1; } }
+            if (opt.effect === 'risky_invest') { 
+                if(Math.random()>0.5) { state.investments+=5000; showToast("Успіх! +$5000", "success"); triggerHaptic([50, 50]); } 
+                else { showToast("Провал...", "warning"); triggerHaptic([100]); } 
+            }
+            
+            state.netWorth = state.savings + state.investments;
+            updateUI(); checkGameOver();
+            const m = document.getElementById('eventModal'); m.classList.add('opacity-0'); setTimeout(()=>m.classList.add('hidden'),300);
+            saveGame();
+        }
+
+        function checkGameOver() { if (state.health <= 0 || state.happiness <= 0) { endGame(state.health <= 0 ? "Виснаження." : "Депресія."); localStorage.removeItem('finRaceSave'); } }
+        function endGame(msg) { 
+            document.getElementById('endDesc').innerText = msg; 
+            document.getElementById('endGameModal').classList.remove('hidden'); 
+            setTimeout(() => document.getElementById('endGameModal').classList.remove('opacity-0'), 100); 
+            triggerHaptic([200, 100, 200]);
+        }
+        function showToast(msg, type='info') {
+            const c = document.getElementById('toastContainer'); const el = document.createElement('div'); el.className = `toast toast-${type}`;
+            const icon = type==='warning'?'<i class="fa-solid fa-triangle-exclamation"></i>':(type==='success'?'<i class="fa-solid fa-check"></i>':'<i class="fa-solid fa-info"></i>');
+            el.innerHTML = `<div class="toast-icon">${icon}</div><div>${msg}</div>`; c.appendChild(el);
+            requestAnimationFrame(()=>el.classList.add('show')); setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),300);},3000);
+        }
+
+        function setJarValue(id, newPct) {
+            newPct = Math.max(0, Math.min(100, newPct)); // CLAMP ADDED HERE
+            
+            const old = state.allocations[id]; const diff = newPct - old;
+            if(Math.abs(diff)<0.1) return;
+            let pid = id==='sav'?'inv':'sav';
+            
+            if(state.allocations[pid]-diff < 0) {
+               newPct = old + state.allocations[pid];
+               state.allocations[pid]=0; 
+            } else {
+               state.allocations[pid]-=diff;
+            }
+            state.allocations[id] = newPct; 
             updateUI();
-        }
-
-        function checkAchievements() {
-            const passive = calculatePassiveIncome().totalPassive;
-            if (state.allocations.fun === 0) state.lowFunStreak++; else state.lowFunStreak = 0;
-            if (state.health < 15) state.wasCriticalHealth = true;
-            ACHIEVEMENTS.forEach(ach => {
-                if (!state.unlockedAchievements.includes(ach.id)) {
-                    if (ach.check(state, passive)) {
-                        state.unlockedAchievements.push(ach.id);
-                        triggerHaptic([100, 100, 200]); showToast(`<i class="fa-solid fa-trophy text-amber-400"></i> ${ach.title}`, ach.text, 'good');
-                    }
-                }
-            });
-        }
-
-        function runTurnCycle() {
-            if(state.isDead || state.isWon) return;
-            if(checkDeath()) return;
-            triggerHaptic(10);
-            
-            const modHealth = state.modifiers.healthDecay;
-            const modHappy = state.modifiers.happyDecay;
-            const nec = state.allocations.nec; const fun = state.allocations.fun; const edu = state.allocations.edu;
-            
-            if(nec<40) state.health -= 12 * modHealth; else if(nec<55) state.health -= 6 * modHealth; else state.health += 3;
-            if((fun+edu)<15) state.happiness -= 12 * modHappy; else if((fun+edu)<25) state.happiness -= 6 * modHappy; else state.happiness += 3;
-            
-            // Apply Asset Buffs (Sportscar min happiness)
-            let minHappy = 0;
-            if (state.inventory.includes('sportscar')) minHappy = 50;
-            
-            state.health = Math.max(0, Math.min(100, state.health)); 
-            state.happiness = Math.max(minHappy, Math.min(100, state.happiness));
-            
-            checkFlowState();
-            if (checkDeath()) return;
-
-            // RESOLVE ACTIVE STORIES FIRST
-            if (state.activeStories.length > 0) {
-                for (let i = state.activeStories.length - 1; i >= 0; i--) {
-                    let s = state.activeStories[i];
-                    s.timer--;
-                    if (s.timer <= 0) {
-                        state.activeStories.splice(i, 1); // Remove
-                        const def = STORIES[s.id];
-                        const result = def.onComplete();
-                        // Trigger Story Result
-                        showToast(result.title, result.text, result.type);
-                        if(result.type === 'good') triggerHaptic([50,50]);
-                        else triggerHaptic(200);
-                    }
-                }
-            }
-
-            // Strategy Risk Roll
-            const strat = INVEST_STRATEGIES[state.activeStrategy];
-            if (state.investments > 0 && Math.random() < strat.risk) {
-                const crashAmount = strat.id === 'risky' ? 0.2 : 0.1; 
-                state.investments *= (1 - crashAmount);
-                triggerHaptic(400); triggerShake();
-                showToast('Збиток!', `${strat.name}: ринок просів на ${crashAmount*100}%`, 'bad');
-                completeTurn(null);
-                return;
-            }
-
-            const roll = Math.random();
-            let turnEvent = null;
-            if (roll < 0.20) { // 20% Dilemma
-                const dilemma = DILEMMAS[Math.floor(Math.random() * DILEMMAS.length)];
-                triggerHaptic(50); showDilemma(dilemma); return; 
-            } else if (roll < 0.25) { // 5% Crash
-                turnEvent = EVENTS[0];
-            } else if (roll < 0.35) { // 10% Correction
-                turnEvent = EVENTS[1];
-            }
-            completeTurn(turnEvent);
-        }
-
-        function showCareerEvent() {
-            const modal = els.dilemmaModal;
-            document.getElementById('dilemmaTitle').innerText = "Кар'єрний стрибок!";
-            document.getElementById('dilemmaDesc').innerText = "Ваши навички помітили. Хедхантеры пропонують варіанти.";
-            document.getElementById('dilemmaIcon').innerHTML = `<i class="fa-solid fa-briefcase text-blue-400"></i>`;
-            const opts = document.getElementById('dilemmaOptions');
-            opts.innerHTML = '';
-            const options = [ { text: 'Стабільний ріст (+$200)', safe: true }, { text: 'Ризикований проект (Шанс +$1000)', safe: false } ];
-            options.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = "w-full text-left p-3 rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all flex justify-between items-center group";
-                btn.innerHTML = `<div><div class="font-bold text-slate-800 text-sm">${opt.text}</div></div><i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-indigo-500"></i>`;
-                btn.onclick = () => { resolveCareerChoice(opt); };
-                opts.appendChild(btn);
-            });
-            modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
-        }
-
-        function resolveCareerChoice(opt) {
-            const modal = els.dilemmaModal; modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 300);
-            if (opt.safe) { state.baseIncome += 200; showToast('Підвищення!', 'Зарплата зросла на $200', 'good'); } 
-            else {
-                if (Math.random() > 0.5) { state.baseIncome += 1000; triggerHaptic([50, 50, 50]); showToast('УСПІХ!', 'Ви зірвали куш! ЗП +$1000', 'good'); } 
-                else { state.happiness = Math.max(0, state.happiness - 20); triggerHaptic(200); showToast('Провал...', 'Стрес і вигорання. ЗП не змінилася.', 'bad'); }
-            }
-            updateUI();
-        }
-
-        function showDilemma(dilemma) {
-            const modal = els.dilemmaModal;
-            document.getElementById('dilemmaTitle').innerText = dilemma.title;
-            document.getElementById('dilemmaDesc').innerText = dilemma.text;
-            document.getElementById('dilemmaIcon').innerHTML = `<i class="fa-solid ${dilemma.icon}"></i>`;
-            const opts = document.getElementById('dilemmaOptions');
-            opts.innerHTML = '';
-            dilemma.options.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = "w-full text-left p-3 rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all flex justify-between items-center group";
-                btn.innerHTML = `<div><div class="font-bold text-slate-800 text-sm">${opt.text}</div><div class="text-[10px] text-slate-400 group-hover:text-indigo-400">Наслідки непередбачувані...</div></div><i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-indigo-500"></i>`;
-                btn.onclick = () => { resolveDilemma(opt); };
-                opts.appendChild(btn);
-            });
-            modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
-        }
-
-        function resolveDilemma(option) {
-            if (option.cost) {
-                let cost = option.cost;
-                if (state.savings >= cost) state.savings -= cost; else { let rem = cost - state.savings; state.savings = 0; state.debt += rem; }
-            }
-            if (option.baseIncome) state.baseIncome += option.baseIncome;
-            if (option.health) state.health = Math.max(0, Math.min(100, state.health + option.health));
-            if (option.happy) state.happiness = Math.max(0, Math.min(100, state.happiness + option.happy));
-            
-            // Start Story Arc if defined
-            if (option.startStory) {
-                state.activeStories.push({ id: option.startStory, timer: STORIES[option.startStory].duration });
-            }
-
-            const modal = els.dilemmaModal; modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 300);
-            const resultEvent = { text: `${option.msg}`, type: option.cost > 0 ? 'bad' : 'good' };
-            completeTurn(resultEvent);
-        }
-
-        function completeTurn(event) {
-            // Player Crash Logic
-            if(event && (event.type === 'crash' || event.crash)) { 
-                if (event.crash) { state.investments *= (1 - event.crash); triggerShake(); triggerHaptic(400); showToast(event.text, `Втрачено ${event.crash*100}% інвестицій`, 'bad'); }
-            }
-            // Rival Crash Logic (Ensure this runs!)
-            if (event && event.rivalMod) { 
-                state.rivalNetWorth *= (1 + event.rivalMod); 
-            }
-
-            const inc = calculateRealIncome(); const pas = calculatePassiveIncome();
-            state.savings += pas.savIncome; state.investments += pas.invIncome; state.debt += pas.debtCost;
-
-            let effInc = inc.realIncome;
-            
-            const eduAllocMoney = (effInc * state.allocations.edu) / 100;
-            state.careerXP += (eduAllocMoney / 20);
-            if (state.careerXP >= 100) { state.careerXP = 100; setTimeout(showCareerEvent, 500); state.careerXP = 0; } 
-
-            const bal = Object.values(state.allocations).reduce((a,b)=>a+b,0);
-            const balancePct = 100 - bal; const rem = (effInc * balancePct) / 100;
-            
-            let addSav = (effInc * state.allocations.sav) / 100;
-            let addInv = (effInc * state.allocations.inv) / 100;
-            let addDebt = 0;
-            
-            if(rem > 0) { 
-                if (state.debt > 0) { if (state.debt >= rem) state.debt -= rem; else { const l = rem - state.debt; state.debt = 0; addSav += l; } } else addSav += rem; 
-            } else addDebt += Math.abs(rem);
-            
-            state.savings += addSav; state.investments += addInv; state.debt += addDebt;
-            
-            state.savings += pas.assetIncome;
-            state.savings -= pas.assetExpense;
-
-            const rivalIncome = state.baseIncome; 
-            state.rivalNetWorth += (rivalIncome * 0.20); 
-            state.rivalNetWorth *= 1.004;
-            state.rivalNetWorth += (Math.random() * 100 - 50); // Volatility
-
-            if(state.phase === 1 && state.savings >= CONFIG.phase1Goal && state.debt <= 0) { 
-                state.phase = 2; document.getElementById('mainHeader').classList.add('border-amber-500', 'border-b-4'); 
-                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); triggerHaptic([100, 50, 100]);
-            }
-
-            const net = state.savings + state.investments - state.debt;
-            state.history.labels.push(state.month); state.history.savingsData.push(state.savings);
-            state.history.investmentsData.push(state.investments); state.history.rivalData.push(state.rivalNetWorth); 
-            if(chartInstance) chartInstance.update(); 
-
-            state.month++; 
-            
-            updateRivalMood(event);
-            
-            checkAchievements(); updateUI(); renderRoom(); saveGame();
-            if(addSav > 10) spawnFloatingText('sav', addSav, 'good');
-            if(addInv > 10) spawnFloatingText('inv', addInv, 'invest');
-
-            if (event && event.type !== 'crash') showToast("Результат", event.text, event.type === 'good' ? 'good' : 'neutral');
-            else if (!event) {
-                let msg = `Капітал: $${Math.floor(net).toLocaleString()}`;
-                if(state.isFlow) msg = `🔥 ПОТІК! Капітал: $${Math.floor(net).toLocaleString()}`;
-                showToast(`Місяць ${state.month-1}`, msg, 'neutral');
-            }
-            if(state.phase === 2 && pas.totalPassive >= CONFIG.phase2Goal) triggerWin();
-        }
-
-        // --- CONTEXTUAL NUDGES ---
-        function checkNudges() {
-            const nArrowNec = document.getElementById('nudge-nec');
-            if (nArrowNec) { if (state.health < 30) nArrowNec.classList.remove('hidden'); else nArrowNec.classList.add('hidden'); }
-            const nArrowFun = document.getElementById('nudge-fun');
-            if (nArrowFun) { if (state.happiness < 30) nArrowFun.classList.remove('hidden'); else nArrowFun.classList.add('hidden'); }
-            if (state.debt > state.savings && els.repayDebtBtn) els.repayDebtBtn.classList.add('btn-danger-glow'); else if(els.repayDebtBtn) els.repayDebtBtn.classList.remove('btn-danger-glow');
-            if (state.savings > 2000 && state.inventory.length === 0 && els.shopBtn) els.shopBtn.classList.add('shop-bounce'); else if(els.shopBtn) els.shopBtn.classList.remove('shop-bounce');
         }
 
         function updateUI() {
-            checkNudges();
-            const inc = calculateRealIncome(); const pas = calculatePassiveIncome();
-            JARS.forEach(jar => { 
-                const pct = state.allocations[jar.id], amount = (inc.realIncome * pct) / 100; 
-                const valEl = document.getElementById(`val-${jar.id}`);
-                const pctEl = document.getElementById(`pct-${jar.id}`);
-                const liqEl = document.getElementById(`liq-${jar.id}`);
-                if(valEl) valEl.innerText = '$' + Math.floor(amount).toLocaleString(); 
-                if(pctEl) pctEl.innerText = pct + '%'; 
-                if(liqEl) liqEl.style.height = pct + '%'; 
+            const inc = (state.baseIncome * state.incomeMultiplier);
+            document.getElementById('incomeDisplay').innerText = '$'+Math.floor(inc).toLocaleString();
+            document.getElementById('incomeBoostDisplay').innerText = `+${Math.round((state.incomeMultiplier-1)*100)}%`;
+            document.getElementById('xpBar').style.width = state.careerXP+'%'; document.getElementById('xpText').innerText = Math.floor(state.careerXP)+'/100';
+            
+            document.getElementById('hpBar').style.width = state.health+'%'; document.getElementById('happyBar').style.width = state.happiness+'%';
+            const nec=state.allocations.nec, fun=state.allocations.fun;
+            
+            const hT=document.getElementById('healthTooltip'), haT=document.getElementById('happyTooltip');
+            if(nec<40) { hT.innerText="КРИТИЧНО! -12"; hT.className="tooltip bg-rose-600 font-bold"; } else if(nec<50) { hT.innerText="Мало. -5"; hT.className="tooltip bg-amber-500"; } else { hT.innerText="Норма"; hT.className="tooltip bg-emerald-500"; }
+            if(fun<10) { haT.innerText="ДЕПРЕСІЯ! -10"; haT.className="tooltip bg-rose-600 font-bold"; } else if(fun<20) { haT.innerText="Нудно. -4"; haT.className="tooltip bg-amber-500"; } else { haT.innerText="Норма"; haT.className="tooltip bg-emerald-500"; }
+            
+            if(state.happiness<30) document.getElementById('jar-fun').classList.add('crit-pulse'); else document.getElementById('jar-fun').classList.remove('crit-pulse');
+            if(state.health<30) document.getElementById('jar-nec').classList.add('crit-pulse'); else document.getElementById('jar-nec').classList.remove('crit-pulse');
+
+            let hpPen = state.health<50?(state.health<20?0.5:0.8):1.0;
+            JARS.forEach(j=>{
+                document.getElementById(`liq-${j.id}`).style.height = state.allocations[j.id]+'%';
+                document.getElementById(`pct-${j.id}`).innerText = Math.round(state.allocations[j.id])+'%';
+                document.getElementById(`abs-${j.id}`).innerText = '$'+Math.floor((inc*hpPen)*(state.allocations[j.id]/100));
             });
-            els.careerXpBar.style.width = Math.min(100, state.careerXP) + '%';
-            els.careerXpVal.innerText = Math.floor(state.careerXP) + '%';
-            const strat = INVEST_STRATEGIES[state.activeStrategy] || INVEST_STRATEGIES.balanced;
-            els.investStratDisplay.innerText = `${strat.name} (${Math.round(strat.rate*100)}%)`;
-            els.investStratDisplay.className = `text-[9px] text-right font-medium mt-0.5 ${strat.color}`;
-            const funPct = state.allocations.fun; const eduPct = state.allocations.edu;
-            const okFun = Math.max(0, 15 - eduPct); const goodFun = Math.max(0, 25 - eduPct);
-            const okEdu = Math.max(0, 15 - funPct); const goodEdu = Math.max(0, 25 - funPct);
-            const mOkFun = document.getElementById('d-ok-fun'); const mGoodFun = document.getElementById('d-good-fun');
-            const mOkEdu = document.getElementById('d-ok-edu'); const mGoodEdu = document.getElementById('d-good-edu');
-            if(mOkFun) mOkFun.style.bottom = okFun + '%'; if(mGoodFun) mGoodFun.style.bottom = goodFun + '%';
-            if(mOkEdu) mOkEdu.style.bottom = okEdu + '%'; if(mGoodEdu) mGoodEdu.style.bottom = goodEdu + '%';
-            els.hudHealthBar.style.width = state.health + '%'; els.hudHealthVal.innerText = Math.round(state.health) + '%'; 
-            els.hudHappyBar.style.width = state.happiness + '%'; els.hudHappyVal.innerText = Math.round(state.happiness) + '%';
-            if (state.isFlow) { els.vitalsPanel.classList.add('flow-glow'); els.flowBadge.classList.remove('hidden'); els.flowLabel.classList.remove('opacity-0'); } 
-            else { els.vitalsPanel.classList.remove('flow-glow'); els.flowBadge.classList.add('hidden'); els.flowLabel.classList.add('opacity-0'); }
-            els.realIncomeVal.innerText = '$' + inc.realIncome.toLocaleString();
-            if (inc.penaltyPct > 0) { els.incomePenaltyBox.classList.remove('hidden'); els.penaltyPercent.innerText = `-${Math.round(inc.penaltyPct*100)}%`; } else els.incomePenaltyBox.classList.add('hidden');
-            els.savingsInterestText.innerText = `+$${Math.floor(pas.savIncome)}/міс`;
-            els.investmentInterestText.innerText = `+$${Math.floor(pas.invIncome)}/міс`;
-            const net = state.savings + state.investments - state.debt;
-            els.hudNetWorth.innerText = '$' + Math.floor(net).toLocaleString();
-            const netAssetFlow = pas.assetIncome - pas.assetExpense;
-            if (netAssetFlow !== 0) { els.assetsIncomeRow.classList.remove('hidden'); els.assetsIncomeText.innerText = (netAssetFlow > 0 ? '+' : '') + '$' + netAssetFlow + '/міс'; els.assetsIncomeText.className = netAssetFlow > 0 ? "text-emerald-600 font-bold tabular-nums" : "text-rose-600 font-bold tabular-nums"; }
-            let target = state.phase === 1 ? CONFIG.phase1Goal : CONFIG.phase2Goal;
-            let current = state.phase === 1 ? state.savings : pas.totalPassive;
-            els.goalTitle.innerText = state.phase === 1 ? "Ціль: Подушка" : "Ціль: Пассивний Дохід";
-            els.goalValue.innerText = `$${Math.floor(current).toLocaleString()} / $${target.toLocaleString()}`;
-            els.goalProgressBar.style.width = Math.min(100, Math.max(0, (current / target) * 100)) + '%';
-             if (state.debt > 5 && state.savings > 5) { document.getElementById('debtRepayContainer').classList.remove('hidden'); document.getElementById('currentDebtVal').innerText = '-$' + Math.floor(state.debt).toLocaleString(); } else document.getElementById('debtRepayContainer').classList.add('hidden');
-            const bal = Object.values(state.allocations).reduce((a,b)=>a+b,0);
-            document.getElementById('totalPercent').innerText = bal; 
-            const balEl = document.getElementById('balanceBadgeContainer');
-            if(bal > 100) { document.getElementById('totalPercent').className = "text-2xl font-black text-rose-500"; balEl.innerHTML = `<div class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 uppercase">Дефіцит ${bal-100}%</div>`; } 
-            else if (bal < 100) { document.getElementById('totalPercent').className = "text-2xl font-black text-emerald-500"; balEl.innerHTML = `<div class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 uppercase">Остаток ${100-bal}%</div>`; } 
-            else { document.getElementById('totalPercent').className = "text-2xl font-black text-slate-800"; balEl.innerHTML = `<div class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-500 uppercase">Ідеально</div>`; }
+
+            document.getElementById('netWorthDisplay').innerText = '$'+Math.floor(state.netWorth).toLocaleString();
+            document.getElementById('rivalNetWorthDisplay').innerText = '$'+Math.floor(state.rivalNetWorth).toLocaleString();
+            if(Math.random()>0.8) document.getElementById('rivalBubble').innerHTML = `<span class="font-bold not-italic text-rose-500">Джо:</span> "${RIVAL_PHRASES[Math.floor(Math.random()*RIVAL_PHRASES.length)]}"`;
+
+            const pas = (state.savings*0.04/12)+(state.investments*0.08/12);
+            // Use strategy rate for display prediction, not random mood
+            const predRate = STRATEGIES[state.activeStrategy].rate;
+            const predPassive = (state.savings * 0.04 / 12) + (state.investments * predRate / 12);
+            
+            document.getElementById('passiveIncomeVal').innerText = '+$'+Math.floor(predPassive);
+            
+            const exp = (inc*hpPen)*((state.allocations.nec+state.allocations.fun)/100);
+            document.getElementById('monthlyExpensesVal').innerText = '$'+Math.floor(exp);
+            
+            const target = exp*300;
+            document.getElementById('freedomGoalVal').innerText = '$'+(target/1000).toFixed(0)+'k';
+            const pct = Math.min(100,(state.netWorth/target)*100)||0;
+            document.getElementById('freedomBar').style.width = pct+'%'; document.getElementById('freedomCurrentPct').innerText = pct.toFixed(1)+'%';
+            const save = (inc*hpPen)-exp+predPassive;
+            document.getElementById('freedomYearsText').innerText = (save<=0||pct>=100) ? (pct>=100?"ВІЛЬНИЙ!":"Немає накопичень") : `~${((target-state.netWorth)/save/12).toFixed(1)} років`;
+
+            document.getElementById('strategyName').innerText = STRATEGIES[state.activeStrategy].name;
+            updateRoomVisuals();
         }
 
-        function repayDebt() { if (state.debt <= 0 || state.savings <= 0) return; let amount = Math.min(state.debt, state.savings); state.debt -= amount; state.savings -= amount; updateUI(); }
-        function spawnFloatingText(jarId, amount, type = 'good') { const elementId = `jar-cont-${jarId}`; const el = document.getElementById(elementId); if (!el) return; const rect = el.getBoundingClientRect(); const floater = document.createElement('div'); const text = (amount > 0 ? '+' : '') + '$' + Math.abs(Math.floor(amount)).toLocaleString(); floater.innerText = text; let colorClass = 'text-emerald-600'; if(type === 'bad') colorClass = 'text-rose-600'; if(type === 'invest') colorClass = 'text-indigo-600'; floater.className = `float-text ${colorClass} text-xl font-black`; floater.style.left = (rect.left + rect.width / 2 - 20) + 'px'; floater.style.top = (rect.top + window.scrollY + 50) + 'px'; document.body.appendChild(floater); setTimeout(() => floater.remove(), 1200); }
-        function showToast(title, message, type = 'neutral') { const toast = document.getElementById('gameToast'); document.getElementById('toastTitle').innerHTML = title; document.getElementById('toastMessage').innerText = message; const tIcon = document.getElementById('toastIcon'); if(type === 'good') { tIcon.className = "w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-xs"; tIcon.innerHTML = '<i class="fa-solid fa-check"></i>'; } else if(type === 'bad') { tIcon.className = "w-6 h-6 rounded-full bg-rose-500 flex items-center justify-center text-xs"; tIcon.innerHTML = '<i class="fa-solid fa-exclamation"></i>'; } else { tIcon.className = "w-6 h-6 rounded-full bg-slate-500 flex items-center justify-center text-xs"; tIcon.innerHTML = '<i class="fa-solid fa-info"></i>'; } toast.classList.add('show'); if(window.toastTimeout) clearTimeout(window.toastTimeout); window.toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 2500); }
-        function triggerShake() { document.body.classList.add('shake-screen'); setTimeout(() => document.body.classList.remove('shake-screen'), 500); }
-        function checkDeath() { if (state.health <= 0) { triggerDeath("Виснаження.", "fa-heart-crack"); return true; } if (state.happiness <= 0) { triggerDeath("Вигорання.", "fa-face-dizzy"); return true; } return false; }
-        function triggerDeath(reason, icon) { state.isDead = true; document.getElementById('deathReason').innerText = reason; document.getElementById('deathIcon').className = `fa-solid ${icon}`; els.gameOverScreen.classList.remove('hidden'); setTimeout(() => els.gameOverScreen.classList.remove('opacity-0'), 50); triggerHaptic(300); localStorage.removeItem('finRaceSave'); }
-        function triggerWin() { state.isWon = true; confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } }); document.getElementById('winMonths').innerText = state.month; document.getElementById('winPassive').innerText = '$' + Math.floor((state.savings * 0.04/12) + (state.investments * 0.1/12)).toLocaleString() + '/міс'; document.getElementById('winNetWorth').innerText = '$' + Math.floor(state.savings + state.investments).toLocaleString(); els.winScreen.classList.remove('hidden'); setTimeout(() => els.winScreen.classList.remove('opacity-0'), 50); triggerHaptic([100, 100, 100, 100, 500]); localStorage.removeItem('finRaceSave'); }
-        function initChart() { if(!els.historyChart) return; const ctx = els.historyChart.getContext('2d'); chartInstance = new Chart(ctx, { type: 'line', data: { labels: state.history.labels, datasets: [ { label: 'Заощадження', data: state.history.savingsData, borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.4)', fill: 'origin', pointRadius: 0, borderWidth: 1, stack: 'player' }, { label: 'Инвестиции', data: state.history.investmentsData, borderColor: '#6366F1', backgroundColor: 'rgba(99, 102, 241, 0.4)', fill: '-1', pointRadius: 0, borderWidth: 1, stack: 'player' }, { label: 'Джо', data: state.history.rivalData, borderColor: '#94A3B8', borderDash: [5, 5], fill: false, tension: 0.4, pointRadius: 0, borderWidth: 2, stack: 'rival' } ] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 8, font: { size: 10 }, usePointStyle: true } }, tooltip: { mode: 'index', intersect: false, callbacks: { label: function(context) { return context.dataset.label + ': $' + Math.floor(context.parsed.y).toLocaleString(); } } } }, scales: { x: { display: false }, y: { stacked: true, grid: { borderDash: [4, 4], color: '#f1f5f9' }, ticks: { callback: function(value) { return '$' + Math.floor(value).toLocaleString(); } } } } } }); }
-        window.closeReport = function() { els.reportPanel.classList.remove('open'); els.mobileOverlay.classList.add('opacity-0'); setTimeout(() => els.mobileOverlay.classList.add('hidden'), 300); }
-        window.addEventListener('DOMContentLoaded', init);
+        function updateRoomVisuals() {
+            const c=document.getElementById('roomObjects'), nw=state.netWorth;
+            let i=['📦','🕯️'];
+            if(nw>5000){i=['🛏️','🍜'];} if(nw>25000){i=['💻','🛋️','🖼️'];} if(nw>100000){i=['🖥️','🐕','🛁'];} if(nw>500000){i=['🏎️','💎','🌴'];}
+            if(!c.innerHTML || c.childElementCount !== i.length || c.firstChild.innerText !== i[0]) { 
+                c.innerHTML=''; 
+                i.forEach((ic,x)=>{const e=document.createElement('div');e.className='room-object animate-bounce';e.innerText=ic;e.style.left=(20+x*20)+'%';e.style.animationDelay=(x*0.2)+'s';c.appendChild(e);}); 
+            }
+        }
+
+        function renderJars() {
+            const c=document.getElementById('jarsContainer'); c.innerHTML='';
+            JARS.forEach(j=>{
+                const d=document.createElement('div'); d.className='flex flex-col items-center select-none';
+                let th=''; if(j.id==='nec') th=`<div class="threshold-line" style="bottom:50%"><span class="threshold-label">HP Min</span></div>`;
+                if(j.id==='fun') th=`<div class="threshold-line" style="bottom:20%"><span class="threshold-label">Happy Min</span></div>`;
+                d.innerHTML=`<div class="jar-container w-full" id="jar-${j.id}" onmousedown="startDrag(event,'${j.id}')" ontouchstart="startDrag(event,'${j.id}')">${th}<div class="jar-liquid" id="liq-${j.id}" style="background-color:${j.liq};height:60%"><div class="jar-drag-handle"><i class="fa-solid fa-grip-lines"></i></div></div></div><div class="mt-1 text-center w-full"><div class="text-[10px] uppercase font-bold text-slate-500"><i class="fa-solid ${j.icon}" style="color:${j.color}"></i> ${j.name}</div><div class="text-xs font-bold" id="pct-${j.id}">0%</div><div class="text-[9px] text-slate-400" id="abs-${j.id}">$0</div></div>`;
+                c.appendChild(d);
+            });
+        }
+        function startDrag(e,id){isDragging=true;activeJarId=id;document.body.style.overflow='hidden'; triggerHaptic(10); }
+        function endDrag(){isDragging=false;activeJarId=null;document.body.style.overflow='';}
+        function onDrag(e){if(!isDragging||!activeJarId)return;e.preventDefault();const el=document.getElementById(`jar-${activeJarId}`),r=el.getBoundingClientRect(),y=e.touches?e.touches[0].clientY:e.clientY;setJarValue(activeJarId,100-((y-r.top)/r.height*100));}
+
+        function initChart() {
+            const ctx=document.getElementById('mainChart').getContext('2d');
+            chartInstance=new Chart(ctx,{type:'line',data:{labels:[],datasets:[{label:'Сейф',data:[],borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.4)',fill:'origin',tension:0.3,stack:'p',pointRadius:0},{label:'Ризик',data:[],borderColor:'#6366F1',backgroundColor:'rgba(99,102,241,0.4)',fill:'-1',tension:0.3,stack:'p',pointRadius:0},{label:'Джо',data:[],borderColor:'#F43F5E',backgroundColor:'transparent',borderDash:[5,5],fill:false,tension:0.3,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.dataset.label||'')+': '+(c.parsed.y!==null?'$'+Math.floor(c.parsed.y).toLocaleString():'')}}},scales:{y:{beginAtZero:true,stacked:true,grid:{display:false}},x:{display:false}}}});
+        }
+        function updateChart(){chartInstance.data.labels=state.history.labels;chartInstance.data.datasets[0].data=state.history.savings;chartInstance.data.datasets[1].data=state.history.investments;chartInstance.data.datasets[2].data=state.history.rival;chartInstance.update();}
+        function triggerConfetti(){confetti({particleCount:100,spread:70,origin:{y:0.6}});}
+        function endGame(msg) { document.getElementById('endDesc').innerText = msg; document.getElementById('endGameModal').classList.remove('hidden'); setTimeout(() => document.getElementById('endGameModal').classList.remove('opacity-0'), 100); }
+        init();
     </script>
 </body>
 </html>
