@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Фінансова Гонка: Remastered</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; overflow-x: hidden; }
+
+        /* Jar Styles */
+        .jar-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+        .jar-container {
+            position: relative; height: 280px; background-color: #E2E8F0; border-radius: 0 0 12px 12px; overflow: hidden;
+            border: 1px solid #CBD5E1; border-top: none; cursor: ns-resize; touch-action: none; transition: border-color 0.2s;
+        }
+        .jar-container:hover { border-color: #94A3B8; }
+        .jar-liquid {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+        .jar-surface {
+            position: absolute; top: 0; left: 0; right: 0; height: 0;
+            border-top: 2px solid rgba(255,255,255,0.7);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .jar-handle {
+            width: 24px; height: 24px; background-color: white; border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15); transform: translateY(-50%);
+            display: flex; align-items: center; justify-content: center;
+            color: #64748B; font-size: 10px; transition: transform 0.1s;
+        }
+        .jar-container:hover .jar-handle { transform: translateY(-50%) scale(1.15); }
+
+        /* MARKERS */
+        .jar-marker {
+            position: absolute; left: 0; right: 0; border-top: 1px dashed; pointer-events: none; z-index: 5;
+            font-size: 9px; font-weight: 800; padding-left: 6px; display: flex; align-items: flex-end; line-height: 0;
+            opacity: 0.7; transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .jar-marker span {
+            background: rgba(255,255,255,0.8); padding: 2px 4px; border-radius: 4px; transform: translateY(-50%); box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .marker-red { border-color: #F43F5E; color: #E11D48; }
+        .marker-green { border-color: #10B981; color: #059669; }
+        .marker-yellow { border-color: #F59E0B; color: #D97706; }
+        
+        /* Sidebar & Modals */
+        .report-panel {
+            position: fixed; z-index: 40; background: white; box-shadow: -5px 0 25px rgba(0,0,0,0.1);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @media (min-width: 768px) { .report-panel { top: 80px; right: 0; bottom: 0; width: 360px; border-left: 1px solid #E2E8F0; transform: translateX(100%); } .report-panel.open { transform: translateX(0); } }
+        @media (max-width: 767px) { .report-panel { left: 0; right: 0; bottom: 0; height: auto; max-height: 85vh; border-radius: 20px 20px 0 0; transform: translateY(100%); padding-bottom: 20px; } .report-panel.open { transform: translateY(0); } }
+
+        .jars-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+        @media (min-width: 768px) { .jars-grid { grid-template-columns: repeat(5, 1fr); gap: 1rem; } }
+
+        .game-over-overlay { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(5px); z-index: 100; }
+        .btn-pulse { animation: pulse-ring 2s infinite; }
+        @keyframes pulse-ring { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(244, 63, 94, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
+        
+        /* Flow State Animation */
+        .flow-glow {
+            animation: flow-pulse 2s infinite alternate;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
+            border-color: #FBBF24 !important;
+        }
+        @keyframes flow-pulse {
+            0% { box-shadow: 0 0 10px rgba(251, 191, 36, 0.2); }
+            100% { box-shadow: 0 0 25px rgba(251, 191, 36, 0.6); }
+        }
+        
+        .highlight-jar { animation: highlight-bounce 2s ease-in-out infinite; box-shadow: 0 0 0 4px #F43F5E !important; border-color: #F43F5E !important; z-index: 20; }
+        @keyframes highlight-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        .custom-tooltip {
+            visibility: hidden; width: 220px; background-color: #1e293b; color: #fff; text-align: left; border-radius: 8px; padding: 10px;
+            position: absolute; z-index: 50; bottom: 110%; left: 0; opacity: 0; transition: opacity 0.2s;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); font-weight: normal; line-height: 1.4; border: 1px solid #475569;
+        }
+        .tooltip-container:hover .custom-tooltip { visibility: visible; opacity: 1; }
+
+        .info-overlay { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(3px); z-index: 80; }
+
+        .float-text {
+            position: absolute;
+            font-weight: 800;
+            pointer-events: none;
+            z-index: 100;
+            text-shadow: 0 2px 4px rgba(255,255,255,0.8);
+            animation: floatUp 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+        @keyframes floatUp {
+            0% { opacity: 0; transform: translateY(10px) scale(0.8); }
+            15% { opacity: 1; transform: translateY(0) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1); }
+        }
+
+        .shake-screen { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .game-toast {
+            position: fixed;
+            top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px);
+            background: rgba(15, 23, 42, 0.95); color: white; padding: 10px 20px; border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px;
+            opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 90;
+            pointer-events: none; white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .game-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        @media (min-width: 768px) { .game-toast { top: 90px; bottom: auto; } }
+        
+        .room-icon { transition: all 0.5s ease; opacity: 0.3; filter: grayscale(100%); transform: scale(0.9); }
+        .room-icon.active { opacity: 1; filter: grayscale(0%); transform: scale(1); }
+        .room-icon.just-unlocked { animation: unlock-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes unlock-pop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+        /* XP BAR ANIMATION */
+        .xp-shine { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); animation: xp-shine 2s infinite; }
+        @keyframes xp-shine { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+        /* CONTEXTUAL NUDGES */
+        .nudge-arrow {
+            position: absolute; top: 45px; left: 50%; transform: translateX(-50%);
+            color: #F43F5E; font-size: 24px; z-index: 20; text-align: center;
+            animation: nudge-bounce 1s infinite;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .nudge-arrow span { 
+            display: block; font-size: 10px; font-weight: 800; background: white; color: #F43F5E;
+            padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); white-space: nowrap; 
+            margin-bottom: 2px; border: 1px solid #FECDD3;
+        }
+        @keyframes nudge-bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-8px); } }
+
+        .btn-danger-glow { 
+            animation: pulse-red 1.5s infinite; 
+            border-color: #F43F5E !important; background-color: #FEF2F2 !important; color: #E11D48 !important; 
+            box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.3) !important;
+        }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); transform: scale(1); } 50% { transform: scale(1.02); } 100% { box-shadow: 0 0 0 10px rgba(244, 63, 94, 0); transform: scale(1); } }
+
+        .shop-bounce { animation: shop-bounce 2s infinite; color: #10B981 !important; transform-origin: center; }
+        @keyframes shop-bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } 60% { transform: translateY(-3px); } }
+
+        /* Strategy Card */
+        .strat-card { transition: all 0.2s; cursor: pointer; border: 2px solid transparent; }
+        .strat-card:hover { transform: translateY(-2px); }
+        .strat-card.active { border-color: #10B981; background-color: #ECFDF5; }
+
+        /* RIVAL AVATAR */
+        .rival-bubble {
+            position: absolute; bottom: 100%; right: 0; 
+            background: white; padding: 8px 12px; border-radius: 12px 12px 0 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #E2E8F0;
+            font-size: 11px; font-weight: bold; color: #475569; white-space: nowrap;
+            opacity: 0; transform: translateY(10px) scale(0.9);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none; z-index: 30;
+        }
+        .rival-bubble.show { opacity: 1; transform: translateY(-10px) scale(1); }
+        .rival-avatar { transition: transform 0.3s; }
+        .rival-avatar:hover { transform: scale(1.1); }
+
+    </style>
+</head>
+<body class="flex flex-col min-h-screen text-slate-800 select-none pb-24 md:pb-0">
+
+    <!-- HEADER -->
+    <header class="bg-slate-900 text-white sticky top-0 z-50 shadow-xl border-b border-slate-700 transition-colors duration-500" id="mainHeader">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                
+                <!-- Left: Goal -->
+                <div class="flex items-center gap-4 w-full md:w-auto flex-grow md:flex-grow-0">
+                    <div class="flex-grow">
+                        <div class="flex justify-between items-end mb-1">
+                            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider" id="goalTitle">Ціль: Подушка</div>
+                            <div class="text-xs font-bold text-emerald-400 tabular-nums" id="goalValue">0 / $5,000</div>
+                        </div>
+                        <div class="w-40 md:w-48 bg-slate-700 rounded-full h-2 overflow-hidden shadow-inner border border-slate-600">
+                            <div id="goalProgressBar" class="bg-emerald-500 h-full rounded-full transition-all duration-700 relative overflow-hidden" style="width: 0%">
+                                <div class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <!-- Shop Button with ID -->
+                        <button id="shopBtn" onclick="openShop()" class="w-6 h-6 rounded-full bg-slate-700 hover:bg-emerald-600 text-slate-300 hover:text-white text-[10px] flex items-center justify-center transition-colors flex-shrink-0">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                        </button>
+                        <button id="soundBtn" class="w-6 h-6 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[10px] flex items-center justify-center transition-colors flex-shrink-0">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                        <button onclick="openInfoModal()" class="w-6 h-6 rounded-full bg-slate-700 hover:bg-slate-600 text-white text-[10px] flex items-center justify-center transition-colors flex-shrink-0 btn-pulse">
+                            <i class="fa-solid fa-info"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Center: Vitals -->
+                <div id="vitalsPanel" class="hidden md:flex gap-4 w-full md:w-auto bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-700 relative overflow-hidden justify-center transition-all duration-500">
+                    <div id="flowLabel" class="absolute inset-0 flex items-center justify-center bg-amber-500/10 opacity-0 transition-opacity pointer-events-none">
+                        <span class="text-[50px] font-black text-amber-500/20 uppercase tracking-widest rotate-12">FLOW</span>
+                    </div>
+
+                    <div class="flex flex-col w-24 relative z-10">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[9px] uppercase font-bold text-slate-400">Здоров'я</span>
+                            <span id="hudHealthVal" class="text-[10px] font-bold text-white">100%</span>
+                        </div>
+                        <div class="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden border border-slate-600">
+                            <div id="hudHealthBar" class="bg-rose-500 h-full rounded-full transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col w-24 border-l border-slate-700 pl-4 relative z-10">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[9px] uppercase font-bold text-slate-400">Щастя</span>
+                            <span id="hudHappyVal" class="text-[10px] font-bold text-white">100%</span>
+                        </div>
+                        <div class="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden border border-slate-600">
+                            <div id="hudHappyBar" class="bg-amber-400 h-full rounded-full transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Action -->
+                <div class="flex items-center gap-4 w-full md:w-auto justify-end">
+                    <div class="text-right hidden lg:block">
+                        <div class="text-[9px] text-slate-400 uppercase tracking-widest">Капітал</div>
+                        <div id="hudNetWorth" class="font-mono font-bold text-lg text-emerald-400 tabular-nums">$0</div>
+                    </div>
+                    <button id="nextMonthBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-6 rounded-lg shadow-lg shadow-emerald-900/40 transform active:scale-95 transition-all flex items-center gap-2 text-xs uppercase tracking-wide">
+                        <span>Прожити Місяць</span>
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 py-6 space-y-6 md:pr-4 lg:pr-8 transition-all duration-300" id="mainContent">
+
+        <!-- ROOM -->
+        <section class="bg-slate-800 rounded-2xl p-4 shadow-lg border border-slate-700 relative overflow-hidden">
+            <div class="flex justify-between items-center mb-3 relative z-10">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><i class="fa-solid fa-layer-group"></i> Рівень життя</h3>
+                <div id="flowBadge" class="hidden px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[9px] font-bold rounded uppercase border border-amber-500/50 animate-pulse"><i class="fa-solid fa-bolt"></i> У Потоці (+10% Еф.)</div>
+            </div>
+            <div class="flex justify-between items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+                <div class="flex flex-col items-center gap-2 min-w-[60px] room-icon active" id="lvl-0"><div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xl shadow-inner">📦</div><div class="text-[9px] text-slate-400 font-bold uppercase">Виживання</div></div>
+                <div class="h-0.5 flex-grow bg-slate-700 rounded-full"></div>
+                <div class="flex flex-col items-center gap-2 min-w-[60px] room-icon" id="lvl-1"><div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xl shadow-inner">🛏️</div><div class="text-[9px] text-slate-400 font-bold uppercase">Комфорт</div></div>
+                <div class="h-0.5 flex-grow bg-slate-700 rounded-full"></div>
+                <div class="flex flex-col items-center gap-2 min-w-[60px] room-icon" id="lvl-2"><div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xl shadow-inner">💻</div><div class="text-[9px] text-slate-400 font-bold uppercase">Свобода</div></div>
+                <div class="h-0.5 flex-grow bg-slate-700 rounded-full"></div>
+                <div class="flex flex-col items-center gap-2 min-w-[60px] room-icon" id="lvl-3"><div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xl shadow-inner">🏝️</div><div class="text-[9px] text-slate-400 font-bold uppercase">Мрія</div></div>
+            </div>
+            <div class="absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-1000" id="roomProgress" style="width: 0%"></div>
+        </section>
+
+        <!-- DASHBOARD -->
+        <section class="grid grid-cols-1 md:grid-cols-12 gap-4">
+            
+            <!-- Income Panel -->
+            <div class="md:col-span-4 lg:col-span-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between h-auto min-h-[14rem]">
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Зарплата</label>
+                        <div id="incomePenaltyBox" class="hidden relative tooltip-container cursor-help">
+                            <div class="flex items-center gap-1.5 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
+                                <i class="fa-solid fa-circle-exclamation text-rose-500 text-[10px]"></i>
+                                <span class="text-[9px] text-slate-500 font-medium"><span id="penaltyPercent" class="text-rose-600 font-bold tabular-nums">-0%</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="relative group mb-3">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold group-focus-within:text-emerald-500 text-sm">$</span>
+                        <input type="number" id="incomeInput" value="4000" class="w-full pl-6 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-800 text-base transition-all tabular-nums">
+                    </div>
+
+                    <!-- CAREER PROGRESS BAR -->
+                    <div class="mb-3 bg-slate-50 p-2 rounded-lg border border-slate-100 relative overflow-hidden group tooltip-container">
+                        <div class="flex justify-between items-center mb-1 text-[9px] font-bold uppercase text-slate-400">
+                            <span class="flex items-center gap-1"><i class="fa-solid fa-briefcase text-blue-400"></i> Досвід (Кар'єра)</span>
+                            <span id="careerXpVal">0%</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div id="careerXpBar" class="h-full bg-blue-500 transition-all duration-500 w-0 relative">
+                                <div class="xp-shine"></div>
+                            </div>
+                        </div>
+                        <div class="custom-tooltip">
+                            <div class="font-bold text-blue-400 mb-1 text-xs">Кар'єрний ріст</div>
+                            <p class="text-[10px] text-slate-300 leading-relaxed">Вкладайте в "Освіту", щоб заповнити шкалу та отримати підвищення.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between text-xs font-bold text-slate-500 mt-1 pb-2 border-b border-slate-100">
+                        <span>На руки (Факт):</span>
+                        <span id="realIncomeVal" class="text-emerald-600 tabular-nums">$4,000</span>
+                    </div>
+                    
+                    <div class="mt-2 text-[10px] text-slate-500 flex flex-col gap-1.5">
+                        <div class="flex justify-between"><span>Заощадження (4%):</span><span class="text-emerald-600 font-bold tabular-nums" id="savingsInterestText">+$0/міс</span></div>
+                        <div class="flex justify-between flex-wrap">
+                            <div class="flex items-center gap-1">
+                                <span>Інвестиції:</span>
+                                <button onclick="openInvestMenu()" class="w-4 h-4 rounded bg-indigo-100 text-indigo-600 hover:bg-indigo-200 flex items-center justify-center text-[9px] transition-colors"><i class="fa-solid fa-gear"></i></button>
+                            </div>
+                            <span class="text-indigo-600 font-bold tabular-nums" id="investmentInterestText">+$0/міс</span>
+                        </div>
+                        <div id="investStratDisplay" class="text-[9px] text-right text-indigo-400 font-medium mt-0.5">Акції (10%)</div>
+                        <!-- NEW ASSET INCOME -->
+                        <div id="assetsIncomeRow" class="flex justify-between hidden pt-1 border-t border-slate-100 mt-1"><span>Активы:</span><span class="text-emerald-600 font-bold tabular-nums" id="assetsIncomeText">+$0/міс</span></div>
+                    </div>
+                </div>
+                
+                <div id="debtRepayContainer" class="hidden mt-2 pt-2 border-t border-slate-100">
+                    <button id="repayDebtBtn" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-1.5 rounded-lg border border-rose-200 text-xs transition-colors flex items-center justify-center gap-1 btn-pulse">
+                        <i class="fa-solid fa-fire"></i> Погасити: <span id="currentDebtVal" class="tabular-nums">$0</span>
+                    </button>
+                </div>
+
+                <div class="mt-auto pt-3 flex items-center justify-between border-t border-slate-100">
+                    <div>
+                        <div class="text-[9px] font-bold text-slate-400 uppercase">Баланс</div>
+                        <div id="balanceBadgeContainer"><div id="balanceBadge" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-500 inline-block mt-0.5">OK</div></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="flex items-baseline gap-0.5 justify-end"><span id="totalPercent" class="text-2xl font-black text-slate-800 tabular-nums">100</span><span class="text-xs font-bold text-slate-400">%</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VS Chart -->
+            <div class="md:col-span-8 lg:col-span-9 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 relative flex flex-col h-auto min-h-[14rem]">
+                <div class="mb-1 flex justify-between items-center relative">
+                    <h3 class="text-[10px] font-bold text-slate-400 uppercase">СТРУКТУРА КАПІТАЛУ</h3>
+                    <!-- RIVAL WIDGET -->
+                    <div class="flex items-center gap-2">
+                        <div class="relative">
+                            <div id="rivalBubble" class="rival-bubble">Непогано...</div>
+                            <div class="w-8 h-8 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center text-lg shadow-sm rival-avatar" id="rivalAvatar">
+                                😐
+                            </div>
+                        </div>
+                        <div class="hidden sm:block text-[9px] text-slate-400 bg-slate-50 px-2 py-0.5 rounded">Джо (Суперник)</div>
+                    </div>
+                </div>
+                <div class="flex-grow w-full relative h-48">
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Jars -->
+        <section>
+            <div class="flex items-center gap-2 mb-3 px-1">
+                <i class="fa-solid fa-hand-pointer text-slate-400 animate-bounce text-sm"></i>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Розподіл бюджету (Тягніть за рівень)</h2>
+            </div>
+            <div class="jars-grid" id="jarsContainer"></div>
+        </section>
+
+    </main>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="gameToast" class="game-toast">
+        <div id="toastIcon" class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-xs"><i class="fa-solid fa-check"></i></div>
+        <div>
+            <div class="text-[10px] uppercase text-slate-400 font-bold" id="toastTitle">Місяць прожито</div>
+            <div class="text-xs font-bold" id="toastMessage">Накопичено +$400</div>
+        </div>
+    </div>
+
+    <!-- DILEMMA MODAL -->
+    <div id="dilemmaModal" class="fixed inset-0 z-[90] game-over-overlay hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-all">
+            <div class="bg-slate-900 p-4 text-white flex items-center gap-3">
+                <div id="dilemmaIcon" class="w-10 h-10 rounded-lg bg-indigo-500 flex items-center justify-center text-lg"><i class="fa-solid fa-question"></i></div>
+                <div>
+                    <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Непростий вибір</div>
+                    <h2 id="dilemmaTitle" class="text-lg font-bold leading-tight">Подія</h2>
+                </div>
+            </div>
+            <div class="p-6">
+                <p id="dilemmaDesc" class="text-sm text-slate-600 mb-6 leading-relaxed">Опис ситуації...</p>
+                <div class="space-y-3" id="dilemmaOptions">
+                    <!-- Options injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHOP MODAL -->
+    <div id="shopModal" class="fixed inset-0 z-[95] game-over-overlay hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-all">
+            <div class="bg-emerald-900 p-4 text-white flex justify-between items-center">
+                <h2 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-shop"></i> Магазин</h2>
+                <button onclick="closeShop()" class="text-emerald-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 bg-slate-50 border-b border-slate-200 text-center">
+                <div class="text-xs text-slate-500 uppercase font-bold">Доступно</div>
+                <div class="text-2xl font-black text-emerald-600" id="shopBalance">$0</div>
+            </div>
+            <div class="p-4 space-y-3 max-h-[60vh] overflow-y-auto" id="shopItems"></div>
+        </div>
+    </div>
+
+    <!-- INVEST STRATEGY MODAL -->
+    <div id="investModal" class="fixed inset-0 z-[95] game-over-overlay hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-all">
+            <div class="bg-indigo-900 p-4 text-white flex justify-between items-center">
+                <h2 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-chart-pie"></i> Стратегія</h2>
+                <button onclick="closeInvestMenu()" class="text-indigo-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 bg-slate-50 border-b border-slate-200 text-center text-xs text-slate-500">
+                Оберіть ризик та дохідність портфеля.
+            </div>
+            <div class="p-4 space-y-3" id="investStrategies">
+                <!-- Strategies injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- REPORT SIDEBAR -->
+    <div id="reportPanel" class="report-panel flex flex-col">
+        <div class="w-full flex justify-center pt-3 pb-1 md:hidden"><div class="w-12 h-1.5 bg-slate-300 rounded-full"></div></div>
+        <div class="p-5 flex-grow overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <div><div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Звіт</div><h2 class="text-xl font-bold text-slate-800">Місяць <span id="reportMonthNum">1</span></h2></div>
+                <button onclick="closeReport()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="reportContent" class="space-y-4"></div>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-white"><button onclick="closeReport()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95">Далі</button></div>
+    </div>
+    
+    <div id="mobileOverlay" onclick="closeReport()" class="fixed inset-0 bg-black/20 z-30 hidden md:hidden transition-opacity opacity-0"></div>
+
+    <!-- INFO / RULES MODAL -->
+    <div id="infoModal" class="fixed inset-0 info-overlay hidden flex items-center justify-center p-4 transition-all duration-300 opacity-0">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md transform scale-95 transition-all duration-300 overflow-hidden text-white">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center">
+                <h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-flag-checkered"></i> Меню</h2>
+                <button onclick="closeInfoModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark fa-lg"></i></button>
+            </div>
+            <div class="p-6 space-y-4 text-sm text-slate-300">
+                <div id="startMenuContent">
+                    <p class="mb-4"><strong>Ціль:</strong> Накопичити капітал, поки Здоров'я та Щастя не впали до 0.</p>
+                    <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 mb-4">
+                        <strong class="text-white block mb-1">🔥 Нові механіки:</strong>
+                        <ul class="list-disc pl-4 space-y-1 text-xs">
+                            <li><strong>Інвестиції:</strong> Обирайте ризик (Облігації, Акції, Крипта).</li>
+                            <li><strong>Сюжети:</strong> Ваші рішення мають наслідки через місяці.</li>
+                            <li><strong>Активи:</strong> Купуйте нерухомість для пасивного доходу.</li>
+                            <li><strong>Джо:</strong> Тепер він реагує на ваші дії!</li>
+                        </ul>
+                    </div>
+                    <div id="resumeBtnContainer" class="hidden mb-2">
+                        <button onclick="closeInfoModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2"><i class="fa-solid fa-play"></i> Продовжити гру</button>
+                        <div class="text-center text-[10px] text-slate-500 mt-1">Знайдено збереження</div>
+                    </div>
+                    <button onclick="resetGame()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl font-bold shadow-lg mt-2"><i class="fa-solid fa-rotate-right"></i> Нова гра</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME OVER / WIN -->
+    <div id="gameOverScreen" class="fixed inset-0 z-[100] game-over-overlay hidden flex flex-col items-center justify-center text-white p-6 text-center opacity-0 transition-opacity duration-1000">
+        <div class="w-20 h-20 rounded-full bg-rose-600 flex items-center justify-center text-3xl mb-4 shadow-[0_0_30px_rgba(225,29,72,0.6)] animate-pulse"><i id="deathIcon" class="fa-solid fa-skull"></i></div>
+        <h1 class="text-3xl font-black mb-1">ГРА ЗАКІНЧЕНА</h1>
+        <p id="deathReason" class="text-lg text-rose-300 font-medium mb-6 max-w-sm text-sm">Причина...</p>
+        <button onclick="resetGame()" class="bg-white text-slate-900 hover:bg-slate-200 font-bold py-2.5 px-8 rounded-full text-sm uppercase transition hover:scale-105 shadow-xl">Заново</button>
+    </div>
+
+    <div id="winScreen" class="fixed inset-0 z-[100] game-over-overlay hidden flex flex-col items-center justify-center text-white p-6 text-center opacity-0 transition-opacity duration-1000 bg-slate-900/95">
+        <div class="w-24 h-24 rounded-full bg-emerald-500 flex items-center justify-center text-4xl mb-6 shadow-[0_0_50px_rgba(16,185,129,0.5)] animate-bounce"><i class="fa-solid fa-trophy"></i></div>
+        <h1 class="text-4xl font-black mb-2 text-emerald-400 tracking-tight">ПЕРЕМОГА!</h1>
+        <p class="text-lg text-slate-300 font-medium mb-8 max-w-md">Ви досягли фінансової свободи!</p>
+        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 mb-8 w-full max-w-sm text-left space-y-4">
+             <div class="flex justify-between border-b border-slate-700 pb-2"><span class="text-slate-400 text-xs uppercase">Минуло часу</span><span class="font-bold"><span id="winMonths">0</span> міс.</span></div>
+             <div class="flex justify-between"><span class="text-slate-400 text-xs uppercase">Капітал</span><span class="font-bold text-white" id="winNetWorth">$0</span></div>
+        </div>
+        <button onclick="resetGame()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-10 rounded-full text-sm uppercase transition hover:scale-105 shadow-xl">Почати заново</button>
+    </div>
+
+    <script>
+        const CONFIG = { phase1Goal: 5000, phase2Goal: 1000, baseIncome: 4000, rates: { savings: 0.04, investments: 0.10, debt: 0.15 } };
+        
+        const JARS = [
+            { id: 'nec', name: 'Необхідне', def: 60, color: '#64748B', liquid: '#94A3B8', icon: 'fa-house', type: 'exp' }, 
+            { id: 'fun', name: 'Розваги', def: 10, color: '#F59E0B', liquid: '#FBBF24', icon: 'fa-champagne-glasses', type: 'exp' }, 
+            { id: 'edu', name: 'Освіта', def: 10, color: '#3B82F6', liquid: '#60A5FA', icon: 'fa-book', type: 'exp' }, 
+            { id: 'sav', name: 'Заощадження', def: 10, color: '#10B981', liquid: '#34D399', icon: 'fa-piggy-bank', type: 'save' }, 
+            { id: 'inv', name: 'Інвестиції', def: 10, color: '#6366F1', liquid: '#818CF8', icon: 'fa-chart-line', type: 'invest' }
+        ];
+
+        const SHOP_ITEMS = [
+            { id: 'mattress', name: 'Ортопедичний матрац', cost: 800, icon: 'fa-bed', desc: "Здоров'я падає на 20% повільніше.", effect: { healthDecay: 0.8 } },
+            { id: 'console', name: 'Ігровая консоль', cost: 1500, icon: 'fa-gamepad', desc: 'Щастя падає на 20% повільніше.', effect: { happyDecay: 0.8 } },
+            { id: 'broker', name: 'Особистий брокер', cost: 2500, icon: 'fa-user-tie', desc: 'Дохідність інвестицій +2% річних.', effect: { investRateFlat: 0.02 } },
+            // REAL ASSETS
+            { id: 'sportscar', name: 'Спорткар', cost: 15000, icon: 'fa-car-sport', desc: 'Щастя не падає нижче 50%. Витрати -$200/міс.', effect: { minHappy: 50, passiveExpense: 200 }, taunt: "Пф, компенсуєш комплекси?" },
+            { id: 'studio', name: 'Студія під оренду', cost: 30000, icon: 'fa-building', desc: 'Пасивний дохід +$150/міс. Стабільність.', effect: { passiveIncome: 150 }, taunt: "Тепер ти лендлорд? Ну-ну." }
+        ];
+
+        const INVEST_STRATEGIES = {
+            safe: { id: 'safe', name: 'Облігації', rate: 0.05, risk: 0.00, color: 'text-emerald-500', desc: 'Стабільно. 5% річних, 0% ризику.', taunt: "Нудно, зате надійно." },
+            balanced: { id: 'balanced', name: 'Акції', rate: 0.10, risk: 0.05, color: 'text-blue-500', desc: 'Баланс. 10% річних, ризик 5%.', taunt: "Класика." },
+            risky: { id: 'risky', name: 'Крипта', rate: 0.25, risk: 0.15, color: 'text-rose-500', desc: 'Азарт. 25% річних, ризик 15%.', taunt: "Ризикуєш усім? Поважаю." }
+        };
+
+        const ACHIEVEMENTS = [
+            { id: 'scrooge', title: 'Скряга', text: 'Накопичити $1000 і не витрачати на розваги 3 місяці.', check: (s) => s.savings >= 1000 && s.lowFunStreak >= 3 },
+            { id: 'wolf', title: 'Вовк з Уолл-стріт', text: 'Пасивний дохід > $500/міс.', check: (s, passive) => passive >= 500 },
+            { id: 'survivor', title: 'Той, що вижив', text: "Відновити здоров'я з <15% до 100%.", check: (s) => s.wasCriticalHealth && s.health >= 100 }
+        ];
+
+        const STORIES = {
+            'startup': {
+                title: 'Стартап друга',
+                duration: 6,
+                onComplete: () => {
+                    if(Math.random() > 0.6) {
+                        state.savings += 5000;
+                        return { title: "Злетів!", text: "Стартап друга вистрілив! Ви отримали частку $5,000.", type: 'good' };
+                    } else {
+                        return { title: "Провал", text: "Стартап друга прогорів. Гроші втрачено.", type: 'bad' };
+                    }
+                }
+            },
+            'art': {
+                title: 'Дивна картина',
+                duration: 3,
+                onComplete: () => {
+                    if(Math.random() > 0.5) {
+                        state.savings += 1000;
+                        return { title: "Шедевр!", text: "Експерт оцінив вашу картину в $1000!", type: 'good' };
+                    }
+                    return { title: "Підробка", text: "Картина виявилася дешевою репродукцією.", type: 'neutral' };
+                }
+            },
+            'mba': {
+                title: 'MBA Навчання',
+                duration: 8,
+                onComplete: () => {
+                    state.baseIncome += 500;
+                    return { title: "Диплом MBA", text: "Ви закінчили навчання! Зарплата зросла на $500.", type: 'good' };
+                }
+            }
+        };
+
+        const DILEMMAS = [
+            { id: 'tooth', title: 'Зубний біль', text: 'Зуб мудрості вирішив, що пора. Біль пекельний.', icon: 'fa-tooth', options: [ { text: 'У клініку (Дорого)', cost: 400, health: 5, happy: 0, msg: 'Дорого, але не боляче.' }, { text: 'Терпіти та пити таблетки', cost: 20, health: -15, happy: -10, msg: 'Ви зекономили, але страждаєте.' } ] },
+            { id: 'startup', title: 'Інвестиція', text: 'Друг відкриває стартап. Просить $1000.', icon: 'fa-rocket', options: [ { text: 'Вкластися ($1000)', cost: 1000, startStory: 'startup', msg: 'Ви стали інвестором. Чекаємо результатів...' }, { text: 'Відмова', cost: 0, msg: 'Ви вирішили не ризикувати.' } ] },
+            { id: 'art', title: 'Розпродаж', text: 'Дивна картина на гаражному розпродажі за $200.', icon: 'fa-palette', options: [ { text: 'Купити ($200)', cost: 200, startStory: 'art', msg: 'Куплено. А раптом шедевр?' }, { text: 'Пройти повз', cost: 0, msg: 'Мотлох нам не потрібен.' } ] },
+            { id: 'mba', title: 'Навчання MBA', text: 'Престижний курс. Дорого, але перспективно.', icon: 'fa-user-graduate', options: [ { text: 'Оплатити ($2000)', cost: 2000, startStory: 'mba', msg: 'Ви почали навчання. Важко, але корисно.' }, { text: 'Занадто дорого', cost: 0, msg: 'Можливо іншим разом.' } ] }
+        ];
+
+        const EVENTS = [
+            { text: "КРИЗА! Обвал ринку на 25%!", type: 'crash', crash: 0.25, rivalMod: -0.10, icon: 'fa-chart-line-down', taunt: "О боже, мої акції!" }, 
+            { text: "Корекція ринку (-10%).", type: 'bad', crash: 0.10, rivalMod: -0.05, icon: 'fa-arrow-trend-down', taunt: "Ринок лихоманить..." }
+        ];
+        
+        const RIVAL_TAUNTS = [
+            { trigger: 'lead_big', text: "Наздоганяй, черепахо!", mood: '😎' },
+            { trigger: 'lead_small', text: "Я все ще попереду.", mood: '😏' },
+            { trigger: 'lose_small', text: "Гей, пригальмуй!", mood: '😰' },
+            { trigger: 'lose_big', text: "Це ненадовго...", mood: '😤' },
+            { trigger: 'crash', text: "О боже, мої гроші!", mood: '😱' }
+        ];
+
+        let state = { 
+            month: 1, phase: 1, savings: 0, investments: 0, debt: 0, baseIncome: CONFIG.baseIncome, 
+            allocations: {}, health: 100, happiness: 100, 
+            history: { labels: [0], savingsData: [0], investmentsData: [0], rivalData: [0] }, 
+            rivalNetWorth: 0, isDead: false, isWon: false,
+            flowStreak: 0, isFlow: false, isMuted: true, // Muted by default to be safe
+            unlockedAchievements: [], lowFunStreak: 0, wasCriticalHealth: false,
+            inventory: [], modifiers: { healthDecay: 1, happyDecay: 1, investRateFlat: 0 },
+            careerXP: 0, activeStrategy: 'balanced',
+            activeStories: [] // NEW
+        };
+        
+        function triggerHaptic(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
+        JARS.forEach(j => state.allocations[j.id] = j.def);
+        let els = {}, chartInstance = null, isDragging = false, currentDragJarId = null;
+
+        // NO AUDIO ENGINE
+
+        function saveGame() { try { localStorage.setItem('finRaceSave', JSON.stringify(state)); } catch(e) {} }
+        function loadGame() { try { const saved = localStorage.getItem('finRaceSave'); if (saved) return JSON.parse(saved); } catch(e) {} return null; }
+        function resetGame() {
+            localStorage.removeItem('finRaceSave');
+            state = { 
+                month: 1, phase: 1, savings: 0, investments: 0, debt: 0, baseIncome: CONFIG.baseIncome, 
+                allocations: {}, health: 100, happiness: 100, 
+                history: { labels: [0], savingsData: [0], investmentsData: [0], rivalData: [0] }, 
+                rivalNetWorth: 0, isDead: false, isWon: false,
+                flowStreak: 0, isFlow: false, isMuted: true,
+                unlockedAchievements: [], lowFunStreak: 0, wasCriticalHealth: false,
+                inventory: [], modifiers: { healthDecay: 1, happyDecay: 1, investRateFlat: 0 },
+                careerXP: 0, activeStrategy: 'balanced', activeStories: []
+            };
+            JARS.forEach(j => state.allocations[j.id] = j.def);
+            els.incomeInput.value = state.baseIncome;
+            els.resumeBtnContainer.classList.add('hidden');
+            els.gameOverScreen.classList.add('hidden');
+            els.winScreen.classList.add('hidden');
+            els.gameOverScreen.classList.add('opacity-0');
+            closeInfoModal();
+            if(chartInstance) chartInstance.destroy();
+            initChart(); renderJars(); updateUI(); renderRoom();
+            showToast('Нова гра', 'Хай щастить!', 'good');
+        }
+
+        function init() {
+            const ids = ['jarsContainer','incomeInput','realIncomeVal','incomePenaltyBox','penaltyPercent','hudHealthBar','hudHealthVal','hudHappyBar','hudHappyVal',
+                         'hudNetWorth','savingsInterestText','investmentInterestText','goalTitle','goalValue','goalProgressBar',
+                         'infoModal','reportPanel','mobileOverlay','reportMonthNum','reportContent','dilemmaModal',
+                         'gameOverScreen','deathReason','deathIcon','winScreen','roomProgress','vitalsPanel','flowBadge','flowLabel',
+                         'historyChart', 'soundBtn', 'resumeBtnContainer', 'shopModal', 'shopBalance', 'shopItems', 'careerXpBar', 'careerXpVal',
+                         'shopBtn', 'repayDebtBtn', 'investModal', 'investStrategies', 'investStratDisplay', 'assetsIncomeRow', 'assetsIncomeText', 'rivalAvatar', 'rivalBubble']; 
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) els[id] = el;
+            });
+
+            const savedState = loadGame();
+            if (savedState) {
+                state = { ...state, ...savedState };
+                if(!state.modifiers) state.modifiers = { healthDecay: 1, happyDecay: 1, investRateFlat: 0 };
+                if(!state.inventory) state.inventory = [];
+                if(state.careerXP === undefined) state.careerXP = 0;
+                if(!state.activeStrategy) state.activeStrategy = 'balanced';
+                if(!state.activeStories) state.activeStories = []; // Migration
+                if(!state.history.labels.length) state.history = { labels: [0], savingsData: [0], investmentsData: [0], rivalData: [0] };
+                els.resumeBtnContainer.classList.remove('hidden');
+            } else { JARS.forEach(j => state.allocations[j.id] = j.def); }
+
+            renderJars(); initChart(); updateUI(); renderRoom();
+            els.incomeInput.value = state.baseIncome;
+            els.incomeInput.addEventListener('input', (e) => { state.baseIncome = Math.max(0, parseInt(e.target.value) || 0); updateUI(); });
+            document.getElementById('nextMonthBtn').addEventListener('click', () => runTurnCycle()); 
+            if(els.repayDebtBtn) els.repayDebtBtn.addEventListener('click', repayDebt);
+            if(els.soundBtn) els.soundBtn.style.display = 'none';
+
+            window.addEventListener('mouseup', endDrag); window.addEventListener('touchend', endDrag);
+            window.addEventListener('mousemove', onDragMove); window.addEventListener('touchmove', onDragMove, { passive: false });
+            setTimeout(openInfoModal, 500);
+        }
+
+        // --- RIVAL LOGIC ---
+        function updateRivalMood(event) {
+            const net = state.savings + state.investments - state.debt;
+            const diff = net - state.rivalNetWorth;
+            let mood = '😐';
+            let taunt = '';
+
+            // Event reaction priority
+            if (event && event.taunt) {
+                mood = '😱'; // Panic on crash usually
+                taunt = event.taunt;
+            } else {
+                // Status check
+                if (diff > 5000) { mood = '😤'; taunt = RIVAL_TAUNTS.find(t=>t.trigger==='lose_big').text; }
+                else if (diff > 0) { mood = '😰'; taunt = RIVAL_TAUNTS.find(t=>t.trigger==='lose_small').text; }
+                else if (diff > -5000) { mood = '😏'; taunt = RIVAL_TAUNTS.find(t=>t.trigger==='lead_small').text; }
+                else { mood = '😎'; taunt = RIVAL_TAUNTS.find(t=>t.trigger==='lead_big').text; }
+                
+                // Chance to NOT say anything if nothing special happened
+                if (Math.random() > 0.3) taunt = ''; 
+            }
+            
+            els.rivalAvatar.innerText = mood;
+            if (taunt) showRivalBubble(taunt);
+        }
+
+        function showRivalBubble(text) {
+            els.rivalBubble.innerText = text;
+            els.rivalBubble.classList.add('show');
+            setTimeout(() => els.rivalBubble.classList.remove('show'), 3000);
+        }
+
+        // --- INVEST STRATEGY ---
+        window.openInvestMenu = function() {
+            els.investStrategies.innerHTML = '';
+            for(let key in INVEST_STRATEGIES) {
+                const s = INVEST_STRATEGIES[key];
+                const isActive = state.activeStrategy === key;
+                const el = document.createElement('div');
+                el.className = `strat-card p-3 rounded-xl border bg-white flex items-center gap-3 ${isActive ? 'active' : 'border-slate-200'}`;
+                el.onclick = () => selectStrategy(key);
+                el.innerHTML = `
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 font-bold text-xs ${s.color}"><i class="fa-solid fa-chart-pie"></i></div>
+                    <div class="flex-grow">
+                        <div class="font-bold text-sm text-slate-800">${s.name}</div>
+                        <div class="text-[10px] text-slate-500">${s.desc}</div>
+                    </div>
+                    ${isActive ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : ''}
+                `;
+                els.investStrategies.appendChild(el);
+            }
+            els.investModal.classList.remove('hidden'); setTimeout(() => els.investModal.classList.remove('opacity-0'), 10);
+        }
+        window.closeInvestMenu = function() { els.investModal.classList.add('opacity-0'); setTimeout(() => els.investModal.classList.add('hidden'), 300); }
+        window.selectStrategy = function(key) {
+            state.activeStrategy = key;
+            updateUI();
+            closeInvestMenu();
+            showToast('Стратегія змінена', INVEST_STRATEGIES[key].name, 'neutral');
+            if (INVEST_STRATEGIES[key].taunt) showRivalBubble(INVEST_STRATEGIES[key].taunt);
+        }
+
+        window.openShop = function() {
+            els.shopBalance.innerText = '$' + Math.floor(state.savings).toLocaleString();
+            els.shopItems.innerHTML = '';
+            SHOP_ITEMS.forEach(item => {
+                const isOwned = state.inventory.includes(item.id);
+                const canAfford = state.savings >= item.cost;
+                const el = document.createElement('div');
+                el.className = "flex items-center gap-3 p-3 rounded-xl border " + (isOwned ? "bg-emerald-50 border-emerald-200" : "bg-white border-slate-200");
+                el.innerHTML = `<div class="w-10 h-10 rounded-full flex items-center justify-center text-lg ${isOwned ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}"><i class="fa-solid ${item.icon}"></i></div><div class="flex-grow"><div class="font-bold text-sm text-slate-800">${item.name}</div><div class="text-[10px] text-slate-500">${item.desc}</div></div>${isOwned ? `<div class="text-xs font-bold text-emerald-600"><i class="fa-solid fa-check"></i> Куплено</div>` : `<button onclick="buyItem('${item.id}')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${canAfford ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}">$${item.cost.toLocaleString()}</button>`}`;
+                els.shopItems.appendChild(el);
+            });
+            els.shopModal.classList.remove('hidden'); setTimeout(() => els.shopModal.classList.remove('opacity-0'), 10);
+        }
+        
+        window.closeShop = function() { els.shopModal.classList.add('opacity-0'); setTimeout(() => els.shopModal.classList.add('hidden'), 300); }
+
+        window.buyItem = function(id) {
+            const item = SHOP_ITEMS.find(i => i.id === id);
+            if (!item || state.savings < item.cost || state.inventory.includes(id)) return;
+            state.savings -= item.cost; state.inventory.push(id);
+            if (item.effect.healthDecay) state.modifiers.healthDecay *= item.effect.healthDecay;
+            if (item.effect.happyDecay) state.modifiers.happyDecay *= item.effect.happyDecay;
+            if (item.effect.investRateFlat) state.modifiers.investRateFlat += item.effect.investRateFlat;
+            saveGame(); updateUI(); openShop(); showToast('Покупка успішна!', item.name + ' додано.', 'good');
+            if (item.taunt) showRivalBubble(item.taunt);
+        }
+
+        window.openInfoModal = function() { els.infoModal.classList.remove('hidden'); setTimeout(() => els.infoModal.classList.remove('opacity-0'), 10); }
+        window.closeInfoModal = function() { els.infoModal.classList.add('opacity-0'); setTimeout(() => els.infoModal.classList.add('hidden'), 300); }
+
+        function startDrag(jarId) { if(state.isDead || state.isWon) return; isDragging = true; currentDragJarId = jarId; triggerHaptic(5); }
+        function endDrag() { isDragging = false; currentDragJarId = null; }
+        function onDragMove(e) {
+            if (!isDragging || !currentDragJarId) return;
+            e.preventDefault();
+            const container = document.getElementById(`jar-cont-${currentDragJarId}`);
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            let percent = ((rect.bottom - clientY) / rect.height) * 100;
+            state.allocations[currentDragJarId] = Math.round(Math.max(0, Math.min(100, percent)));
+            if (currentDragJarId !== 'sav') {
+                let bufferId = 'sav'; if (currentDragJarId === 'sav') bufferId = 'inv'; 
+                let used = 0; for(let key in state.allocations) if(key !== bufferId) used += state.allocations[key];
+                state.allocations[bufferId] = Math.max(0, 100 - used);
+            }
+            updateUI();
+        }
+
+        function renderJars() {
+            els.jarsContainer.innerHTML = '';
+            JARS.forEach(jar => {
+                const card = document.createElement('div');
+                card.className = 'jar-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-64 select-none';
+                
+                let nudgeHtml = '';
+                if (jar.id === 'nec') nudgeHtml = '<div id="nudge-nec" class="nudge-arrow hidden"><span>Мало!</span><i class="fa-solid fa-arrow-down"></i></div>';
+                if (jar.id === 'fun') nudgeHtml = '<div id="nudge-fun" class="nudge-arrow hidden"><span>Мало!</span><i class="fa-solid fa-arrow-down"></i></div>';
+
+                card.innerHTML = `<div class="p-2 bg-white z-10 border-b border-slate-100 pointer-events-none text-center relative"><div class="flex justify-center items-center gap-1.5 mb-1"><div class="w-5 h-5 rounded bg-slate-50 flex items-center justify-center text-[10px]" style="color:${jar.color}"><i class="fa-solid ${jar.icon}"></i></div><h3 class="font-bold text-slate-700 text-[10px] uppercase truncate">${jar.name}</h3></div><div class="flex justify-center items-baseline gap-1"><span id="pct-${jar.id}" class="text-[10px] font-bold text-slate-400 tabular-nums">0%</span><span id="val-${jar.id}" class="font-bold text-slate-800 text-xs tabular-nums">$0</span></div></div>
+                ${nudgeHtml}
+                <div id="jar-cont-${jar.id}" class="jar-container flex-grow relative w-full group cursor-ns-resize bg-slate-50"><div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: linear-gradient(#cbd5e1 1px, transparent 1px); background-size: 100% 20px;"></div><div id="liq-${jar.id}" class="jar-liquid w-full absolute bottom-0 transition-all duration-150 ease-out pointer-events-none" style="background-color: ${jar.liquid}; height: ${state.allocations[jar.id]}%;"><div class="jar-surface absolute top-0 w-full h-0 border-t-2 border-white/50 flex justify-center"><div class="jar-handle w-5 h-5 bg-white rounded-full shadow-md flex items-center justify-center -translate-y-1/2 text-slate-400 text-[8px] group-hover:scale-110 transition-transform"><i class="fa-solid fa-grip-lines"></i></div></div></div><div id="markers-${jar.id}" class="absolute inset-0 pointer-events-none"></div></div>`;
+                els.jarsContainer.appendChild(card);
+                const cont = card.querySelector('.jar-container');
+                cont.addEventListener('mousedown', () => startDrag(jar.id));
+                cont.addEventListener('touchstart', (e) => { startDrag(jar.id); onDragMove(e); }, { passive: false });
+                const mCont = document.getElementById(`markers-${jar.id}`);
+                if (jar.id === 'nec') { createMarker(mCont, 40, 'HP Crit', 'marker-red'); createMarker(mCont, 55, 'HP OK', 'marker-green'); } 
+                else if (jar.id === 'fun' || jar.id === 'edu') { createMarker(mCont, 0, 'Happy OK', 'marker-yellow', `d-ok-${jar.id}`); createMarker(mCont, 0, 'Happy+', 'marker-green', `d-good-${jar.id}`); }
+            });
+        }
+
+        function createMarker(container, bottomPct, text, colorClass, id=null) {
+            const m = document.createElement('div');
+            m.className = `jar-marker ${colorClass}`;
+            m.style.bottom = bottomPct + '%';
+            if(id) m.id = id;
+            m.innerHTML = `<span>${text}</span>`;
+            container.appendChild(m);
+        }
+
+        function calculateRealIncome() {
+            let penalty = 0;
+            if (state.health < 50) penalty += (50 - state.health) * 0.015; 
+            if (state.happiness < 50) penalty += (50 - state.happiness) * 0.01;
+            penalty = Math.min(0.9, penalty);
+            let amount = Math.floor(state.baseIncome * (1 - penalty));
+            if (state.isFlow) amount = Math.floor(amount * 1.1);
+            return { realIncome: amount, penaltyPct: penalty };
+        }
+        function calculatePassiveIncome() { 
+            const strat = INVEST_STRATEGIES[state.activeStrategy] || INVEST_STRATEGIES.balanced;
+            const invRate = state.phase === 1 ? CONFIG.rates.savings : strat.rate + state.modifiers.investRateFlat;
+            
+            // Calculate Asset Income/Expense
+            let assetIncome = 0;
+            let assetExpense = 0;
+            state.inventory.forEach(itemId => {
+                const item = SHOP_ITEMS.find(i => i.id === itemId);
+                if (item && item.effect.passiveIncome) assetIncome += item.effect.passiveIncome;
+                if (item && item.effect.passiveExpense) assetExpense += item.effect.passiveExpense;
+            });
+
+            return { 
+                savIncome: state.savings * (CONFIG.rates.savings / 12), 
+                invIncome: state.investments * (invRate / 12), 
+                debtCost: state.debt * (CONFIG.rates.debt / 12), 
+                assetIncome: assetIncome,
+                assetExpense: assetExpense,
+                totalPassive: (state.savings * (CONFIG.rates.savings / 12)) + (state.investments * (invRate / 12)) + assetIncome - assetExpense
+            }; 
+        }
+
+        function renderRoom() {
+            const net = state.savings + state.investments - state.debt;
+            const thresholds = [0, 5000, 20000, 100000]; 
+            let currentLvl = 0;
+            if (net >= thresholds[2]) currentLvl = 3; else if (net >= thresholds[1]) currentLvl = 2; else if (net >= thresholds[0] + 1000) currentLvl = 1;
+            if (state.lastLvl !== undefined && currentLvl > state.lastLvl) { triggerHaptic([50, 50, 50]); }
+            state.lastLvl = currentLvl;
+            for(let i=0; i<=3; i++) {
+                const el = document.getElementById(`lvl-${i}`);
+                if(el) {
+                    if (i <= currentLvl) { if (!el.classList.contains('active')) { el.classList.add('active', 'just-unlocked'); setTimeout(() => el.classList.remove('just-unlocked'), 1000); } } 
+                    else { el.classList.remove('active'); }
+                }
+            }
+            let nextGoal = thresholds[1]; if(currentLvl === 1) nextGoal = thresholds[2]; if(currentLvl >= 2) nextGoal = thresholds[3];
+            const pct = Math.min(100, Math.max(0, (net / nextGoal) * 100));
+            els.roomProgress.style.width = pct + '%';
+        }
+
+        function checkFlowState() {
+            if (state.health >= 80 && state.happiness >= 80) state.flowStreak++; else { state.flowStreak = 0; state.isFlow = false; }
+            if (state.flowStreak >= 3 && !state.isFlow) { state.isFlow = true; triggerHaptic([50, 50, 100]); showToast('У ПОТОЦІ!', 'Ви увійшли в режим високої ефективності (+10% дохід).', 'good'); }
+            updateUI();
+        }
+
+        function checkAchievements() {
+            const passive = calculatePassiveIncome().totalPassive;
+            if (state.allocations.fun === 0) state.lowFunStreak++; else state.lowFunStreak = 0;
+            if (state.health < 15) state.wasCriticalHealth = true;
+            ACHIEVEMENTS.forEach(ach => {
+                if (!state.unlockedAchievements.includes(ach.id)) {
+                    if (ach.check(state, passive)) {
+                        state.unlockedAchievements.push(ach.id);
+                        triggerHaptic([100, 100, 200]); showToast(`<i class="fa-solid fa-trophy text-amber-400"></i> ${ach.title}`, ach.text, 'good');
+                    }
+                }
+            });
+        }
+
+        function runTurnCycle() {
+            if(state.isDead || state.isWon) return;
+            if(checkDeath()) return;
+            triggerHaptic(10);
+            
+            const modHealth = state.modifiers.healthDecay;
+            const modHappy = state.modifiers.happyDecay;
+            const nec = state.allocations.nec; const fun = state.allocations.fun; const edu = state.allocations.edu;
+            
+            if(nec<40) state.health -= 12 * modHealth; else if(nec<55) state.health -= 6 * modHealth; else state.health += 3;
+            if((fun+edu)<15) state.happiness -= 12 * modHappy; else if((fun+edu)<25) state.happiness -= 6 * modHappy; else state.happiness += 3;
+            
+            // Apply Asset Buffs (Sportscar min happiness)
+            let minHappy = 0;
+            if (state.inventory.includes('sportscar')) minHappy = 50;
+            
+            state.health = Math.max(0, Math.min(100, state.health)); 
+            state.happiness = Math.max(minHappy, Math.min(100, state.happiness));
+            
+            checkFlowState();
+            if (checkDeath()) return;
+
+            // RESOLVE ACTIVE STORIES FIRST
+            if (state.activeStories.length > 0) {
+                for (let i = state.activeStories.length - 1; i >= 0; i--) {
+                    let s = state.activeStories[i];
+                    s.timer--;
+                    if (s.timer <= 0) {
+                        state.activeStories.splice(i, 1); // Remove
+                        const def = STORIES[s.id];
+                        const result = def.onComplete();
+                        // Trigger Story Result
+                        showToast(result.title, result.text, result.type);
+                        if(result.type === 'good') triggerHaptic([50,50]);
+                        else triggerHaptic(200);
+                    }
+                }
+            }
+
+            // Strategy Risk Roll
+            const strat = INVEST_STRATEGIES[state.activeStrategy];
+            if (state.investments > 0 && Math.random() < strat.risk) {
+                const crashAmount = strat.id === 'risky' ? 0.2 : 0.1; 
+                state.investments *= (1 - crashAmount);
+                triggerHaptic(400); triggerShake();
+                showToast('Збиток!', `${strat.name}: ринок просів на ${crashAmount*100}%`, 'bad');
+                completeTurn(null);
+                return;
+            }
+
+            const roll = Math.random();
+            let turnEvent = null;
+            if (roll < 0.20) { // 20% Dilemma
+                const dilemma = DILEMMAS[Math.floor(Math.random() * DILEMMAS.length)];
+                triggerHaptic(50); showDilemma(dilemma); return; 
+            } else if (roll < 0.25) { // 5% Crash
+                turnEvent = EVENTS[0];
+            } else if (roll < 0.35) { // 10% Correction
+                turnEvent = EVENTS[1];
+            }
+            completeTurn(turnEvent);
+        }
+
+        function showCareerEvent() {
+            const modal = els.dilemmaModal;
+            document.getElementById('dilemmaTitle').innerText = "Кар'єрний стрибок!";
+            document.getElementById('dilemmaDesc').innerText = "Ваши навички помітили. Хедхантеры пропонують варіанти.";
+            document.getElementById('dilemmaIcon').innerHTML = `<i class="fa-solid fa-briefcase text-blue-400"></i>`;
+            const opts = document.getElementById('dilemmaOptions');
+            opts.innerHTML = '';
+            const options = [ { text: 'Стабільний ріст (+$200)', safe: true }, { text: 'Ризикований проект (Шанс +$1000)', safe: false } ];
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all flex justify-between items-center group";
+                btn.innerHTML = `<div><div class="font-bold text-slate-800 text-sm">${opt.text}</div></div><i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-indigo-500"></i>`;
+                btn.onclick = () => { resolveCareerChoice(opt); };
+                opts.appendChild(btn);
+            });
+            modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function resolveCareerChoice(opt) {
+            const modal = els.dilemmaModal; modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 300);
+            if (opt.safe) { state.baseIncome += 200; showToast('Підвищення!', 'Зарплата зросла на $200', 'good'); } 
+            else {
+                if (Math.random() > 0.5) { state.baseIncome += 1000; triggerHaptic([50, 50, 50]); showToast('УСПІХ!', 'Ви зірвали куш! ЗП +$1000', 'good'); } 
+                else { state.happiness = Math.max(0, state.happiness - 20); triggerHaptic(200); showToast('Провал...', 'Стрес і вигорання. ЗП не змінилася.', 'bad'); }
+            }
+            updateUI();
+        }
+
+        function showDilemma(dilemma) {
+            const modal = els.dilemmaModal;
+            document.getElementById('dilemmaTitle').innerText = dilemma.title;
+            document.getElementById('dilemmaDesc').innerText = dilemma.text;
+            document.getElementById('dilemmaIcon').innerHTML = `<i class="fa-solid ${dilemma.icon}"></i>`;
+            const opts = document.getElementById('dilemmaOptions');
+            opts.innerHTML = '';
+            dilemma.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all flex justify-between items-center group";
+                btn.innerHTML = `<div><div class="font-bold text-slate-800 text-sm">${opt.text}</div><div class="text-[10px] text-slate-400 group-hover:text-indigo-400">Наслідки непередбачувані...</div></div><i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-indigo-500"></i>`;
+                btn.onclick = () => { resolveDilemma(opt); };
+                opts.appendChild(btn);
+            });
+            modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function resolveDilemma(option) {
+            if (option.cost) {
+                let cost = option.cost;
+                if (state.savings >= cost) state.savings -= cost; else { let rem = cost - state.savings; state.savings = 0; state.debt += rem; }
+            }
+            if (option.baseIncome) state.baseIncome += option.baseIncome;
+            if (option.health) state.health = Math.max(0, Math.min(100, state.health + option.health));
+            if (option.happy) state.happiness = Math.max(0, Math.min(100, state.happiness + option.happy));
+            
+            // Start Story Arc if defined
+            if (option.startStory) {
+                state.activeStories.push({ id: option.startStory, timer: STORIES[option.startStory].duration });
+            }
+
+            const modal = els.dilemmaModal; modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 300);
+            const resultEvent = { text: `${option.msg}`, type: option.cost > 0 ? 'bad' : 'good' };
+            completeTurn(resultEvent);
+        }
+
+        function completeTurn(event) {
+            // Player Crash Logic
+            if(event && (event.type === 'crash' || event.crash)) { 
+                if (event.crash) { state.investments *= (1 - event.crash); triggerShake(); triggerHaptic(400); showToast(event.text, `Втрачено ${event.crash*100}% інвестицій`, 'bad'); }
+            }
+            // Rival Crash Logic (Ensure this runs!)
+            if (event && event.rivalMod) { 
+                state.rivalNetWorth *= (1 + event.rivalMod); 
+            }
+
+            const inc = calculateRealIncome(); const pas = calculatePassiveIncome();
+            state.savings += pas.savIncome; state.investments += pas.invIncome; state.debt += pas.debtCost;
+
+            let effInc = inc.realIncome;
+            
+            const eduAllocMoney = (effInc * state.allocations.edu) / 100;
+            state.careerXP += (eduAllocMoney / 20);
+            if (state.careerXP >= 100) { state.careerXP = 100; setTimeout(showCareerEvent, 500); state.careerXP = 0; } 
+
+            const bal = Object.values(state.allocations).reduce((a,b)=>a+b,0);
+            const balancePct = 100 - bal; const rem = (effInc * balancePct) / 100;
+            
+            let addSav = (effInc * state.allocations.sav) / 100;
+            let addInv = (effInc * state.allocations.inv) / 100;
+            let addDebt = 0;
+            
+            if(rem > 0) { 
+                if (state.debt > 0) { if (state.debt >= rem) state.debt -= rem; else { const l = rem - state.debt; state.debt = 0; addSav += l; } } else addSav += rem; 
+            } else addDebt += Math.abs(rem);
+            
+            state.savings += addSav; state.investments += addInv; state.debt += addDebt;
+            
+            state.savings += pas.assetIncome;
+            state.savings -= pas.assetExpense;
+
+            const rivalIncome = state.baseIncome; 
+            state.rivalNetWorth += (rivalIncome * 0.20); 
+            state.rivalNetWorth *= 1.004;
+            state.rivalNetWorth += (Math.random() * 100 - 50); // Volatility
+
+            if(state.phase === 1 && state.savings >= CONFIG.phase1Goal && state.debt <= 0) { 
+                state.phase = 2; document.getElementById('mainHeader').classList.add('border-amber-500', 'border-b-4'); 
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); triggerHaptic([100, 50, 100]);
+            }
+
+            const net = state.savings + state.investments - state.debt;
+            state.history.labels.push(state.month); state.history.savingsData.push(state.savings);
+            state.history.investmentsData.push(state.investments); state.history.rivalData.push(state.rivalNetWorth); 
+            if(chartInstance) chartInstance.update(); 
+
+            state.month++; 
+            
+            updateRivalMood(event);
+            
+            checkAchievements(); updateUI(); renderRoom(); saveGame();
+            if(addSav > 10) spawnFloatingText('sav', addSav, 'good');
+            if(addInv > 10) spawnFloatingText('inv', addInv, 'invest');
+
+            if (event && event.type !== 'crash') showToast("Результат", event.text, event.type === 'good' ? 'good' : 'neutral');
+            else if (!event) {
+                let msg = `Капітал: $${Math.floor(net).toLocaleString()}`;
+                if(state.isFlow) msg = `🔥 ПОТІК! Капітал: $${Math.floor(net).toLocaleString()}`;
+                showToast(`Місяць ${state.month-1}`, msg, 'neutral');
+            }
+            if(state.phase === 2 && pas.totalPassive >= CONFIG.phase2Goal) triggerWin();
+        }
+
+        // --- CONTEXTUAL NUDGES ---
+        function checkNudges() {
+            const nArrowNec = document.getElementById('nudge-nec');
+            if (nArrowNec) { if (state.health < 30) nArrowNec.classList.remove('hidden'); else nArrowNec.classList.add('hidden'); }
+            const nArrowFun = document.getElementById('nudge-fun');
+            if (nArrowFun) { if (state.happiness < 30) nArrowFun.classList.remove('hidden'); else nArrowFun.classList.add('hidden'); }
+            if (state.debt > state.savings && els.repayDebtBtn) els.repayDebtBtn.classList.add('btn-danger-glow'); else if(els.repayDebtBtn) els.repayDebtBtn.classList.remove('btn-danger-glow');
+            if (state.savings > 2000 && state.inventory.length === 0 && els.shopBtn) els.shopBtn.classList.add('shop-bounce'); else if(els.shopBtn) els.shopBtn.classList.remove('shop-bounce');
+        }
+
+        function updateUI() {
+            checkNudges();
+            const inc = calculateRealIncome(); const pas = calculatePassiveIncome();
+            JARS.forEach(jar => { 
+                const pct = state.allocations[jar.id], amount = (inc.realIncome * pct) / 100; 
+                const valEl = document.getElementById(`val-${jar.id}`);
+                const pctEl = document.getElementById(`pct-${jar.id}`);
+                const liqEl = document.getElementById(`liq-${jar.id}`);
+                if(valEl) valEl.innerText = '$' + Math.floor(amount).toLocaleString(); 
+                if(pctEl) pctEl.innerText = pct + '%'; 
+                if(liqEl) liqEl.style.height = pct + '%'; 
+            });
+            els.careerXpBar.style.width = Math.min(100, state.careerXP) + '%';
+            els.careerXpVal.innerText = Math.floor(state.careerXP) + '%';
+            const strat = INVEST_STRATEGIES[state.activeStrategy] || INVEST_STRATEGIES.balanced;
+            els.investStratDisplay.innerText = `${strat.name} (${Math.round(strat.rate*100)}%)`;
+            els.investStratDisplay.className = `text-[9px] text-right font-medium mt-0.5 ${strat.color}`;
+            const funPct = state.allocations.fun; const eduPct = state.allocations.edu;
+            const okFun = Math.max(0, 15 - eduPct); const goodFun = Math.max(0, 25 - eduPct);
+            const okEdu = Math.max(0, 15 - funPct); const goodEdu = Math.max(0, 25 - funPct);
+            const mOkFun = document.getElementById('d-ok-fun'); const mGoodFun = document.getElementById('d-good-fun');
+            const mOkEdu = document.getElementById('d-ok-edu'); const mGoodEdu = document.getElementById('d-good-edu');
+            if(mOkFun) mOkFun.style.bottom = okFun + '%'; if(mGoodFun) mGoodFun.style.bottom = goodFun + '%';
+            if(mOkEdu) mOkEdu.style.bottom = okEdu + '%'; if(mGoodEdu) mGoodEdu.style.bottom = goodEdu + '%';
+            els.hudHealthBar.style.width = state.health + '%'; els.hudHealthVal.innerText = Math.round(state.health) + '%'; 
+            els.hudHappyBar.style.width = state.happiness + '%'; els.hudHappyVal.innerText = Math.round(state.happiness) + '%';
+            if (state.isFlow) { els.vitalsPanel.classList.add('flow-glow'); els.flowBadge.classList.remove('hidden'); els.flowLabel.classList.remove('opacity-0'); } 
+            else { els.vitalsPanel.classList.remove('flow-glow'); els.flowBadge.classList.add('hidden'); els.flowLabel.classList.add('opacity-0'); }
+            els.realIncomeVal.innerText = '$' + inc.realIncome.toLocaleString();
+            if (inc.penaltyPct > 0) { els.incomePenaltyBox.classList.remove('hidden'); els.penaltyPercent.innerText = `-${Math.round(inc.penaltyPct*100)}%`; } else els.incomePenaltyBox.classList.add('hidden');
+            els.savingsInterestText.innerText = `+$${Math.floor(pas.savIncome)}/міс`;
+            els.investmentInterestText.innerText = `+$${Math.floor(pas.invIncome)}/міс`;
+            const net = state.savings + state.investments - state.debt;
+            els.hudNetWorth.innerText = '$' + Math.floor(net).toLocaleString();
+            const netAssetFlow = pas.assetIncome - pas.assetExpense;
+            if (netAssetFlow !== 0) { els.assetsIncomeRow.classList.remove('hidden'); els.assetsIncomeText.innerText = (netAssetFlow > 0 ? '+' : '') + '$' + netAssetFlow + '/міс'; els.assetsIncomeText.className = netAssetFlow > 0 ? "text-emerald-600 font-bold tabular-nums" : "text-rose-600 font-bold tabular-nums"; }
+            let target = state.phase === 1 ? CONFIG.phase1Goal : CONFIG.phase2Goal;
+            let current = state.phase === 1 ? state.savings : pas.totalPassive;
+            els.goalTitle.innerText = state.phase === 1 ? "Ціль: Подушка" : "Ціль: Пассивний Дохід";
+            els.goalValue.innerText = `$${Math.floor(current).toLocaleString()} / $${target.toLocaleString()}`;
+            els.goalProgressBar.style.width = Math.min(100, Math.max(0, (current / target) * 100)) + '%';
+             if (state.debt > 5 && state.savings > 5) { document.getElementById('debtRepayContainer').classList.remove('hidden'); document.getElementById('currentDebtVal').innerText = '-$' + Math.floor(state.debt).toLocaleString(); } else document.getElementById('debtRepayContainer').classList.add('hidden');
+            const bal = Object.values(state.allocations).reduce((a,b)=>a+b,0);
+            document.getElementById('totalPercent').innerText = bal; 
+            const balEl = document.getElementById('balanceBadgeContainer');
+            if(bal > 100) { document.getElementById('totalPercent').className = "text-2xl font-black text-rose-500"; balEl.innerHTML = `<div class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 uppercase">Дефіцит ${bal-100}%</div>`; } 
+            else if (bal < 100) { document.getElementById('totalPercent').className = "text-2xl font-black text-emerald-500"; balEl.innerHTML = `<div class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 uppercase">Остаток ${100-bal}%</div>`; } 
+            else { document.getElementById('totalPercent').className = "text-2xl font-black text-slate-800"; balEl.innerHTML = `<div class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-500 uppercase">Ідеально</div>`; }
+        }
+
+        function repayDebt() { if (state.debt <= 0 || state.savings <= 0) return; let amount = Math.min(state.debt, state.savings); state.debt -= amount; state.savings -= amount; updateUI(); }
+        function spawnFloatingText(jarId, amount, type = 'good') { const elementId = `jar-cont-${jarId}`; const el = document.getElementById(elementId); if (!el) return; const rect = el.getBoundingClientRect(); const floater = document.createElement('div'); const text = (amount > 0 ? '+' : '') + '$' + Math.abs(Math.floor(amount)).toLocaleString(); floater.innerText = text; let colorClass = 'text-emerald-600'; if(type === 'bad') colorClass = 'text-rose-600'; if(type === 'invest') colorClass = 'text-indigo-600'; floater.className = `float-text ${colorClass} text-xl font-black`; floater.style.left = (rect.left + rect.width / 2 - 20) + 'px'; floater.style.top = (rect.top + window.scrollY + 50) + 'px'; document.body.appendChild(floater); setTimeout(() => floater.remove(), 1200); }
+        function showToast(title, message, type = 'neutral') { const toast = document.getElementById('gameToast'); document.getElementById('toastTitle').innerHTML = title; document.getElementById('toastMessage').innerText = message; const tIcon = document.getElementById('toastIcon'); if(type === 'good') { tIcon.className = "w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-xs"; tIcon.innerHTML = '<i class="fa-solid fa-check"></i>'; } else if(type === 'bad') { tIcon.className = "w-6 h-6 rounded-full bg-rose-500 flex items-center justify-center text-xs"; tIcon.innerHTML = '<i class="fa-solid fa-exclamation"></i>'; } else { tIcon.className = "w-6 h-6 rounded-full bg-slate-500 flex items-center justify-center text-xs"; tIcon.innerHTML = '<i class="fa-solid fa-info"></i>'; } toast.classList.add('show'); if(window.toastTimeout) clearTimeout(window.toastTimeout); window.toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 2500); }
+        function triggerShake() { document.body.classList.add('shake-screen'); setTimeout(() => document.body.classList.remove('shake-screen'), 500); }
+        function checkDeath() { if (state.health <= 0) { triggerDeath("Виснаження.", "fa-heart-crack"); return true; } if (state.happiness <= 0) { triggerDeath("Вигорання.", "fa-face-dizzy"); return true; } return false; }
+        function triggerDeath(reason, icon) { state.isDead = true; document.getElementById('deathReason').innerText = reason; document.getElementById('deathIcon').className = `fa-solid ${icon}`; els.gameOverScreen.classList.remove('hidden'); setTimeout(() => els.gameOverScreen.classList.remove('opacity-0'), 50); triggerHaptic(300); localStorage.removeItem('finRaceSave'); }
+        function triggerWin() { state.isWon = true; confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } }); document.getElementById('winMonths').innerText = state.month; document.getElementById('winPassive').innerText = '$' + Math.floor((state.savings * 0.04/12) + (state.investments * 0.1/12)).toLocaleString() + '/міс'; document.getElementById('winNetWorth').innerText = '$' + Math.floor(state.savings + state.investments).toLocaleString(); els.winScreen.classList.remove('hidden'); setTimeout(() => els.winScreen.classList.remove('opacity-0'), 50); triggerHaptic([100, 100, 100, 100, 500]); localStorage.removeItem('finRaceSave'); }
+        function initChart() { if(!els.historyChart) return; const ctx = els.historyChart.getContext('2d'); chartInstance = new Chart(ctx, { type: 'line', data: { labels: state.history.labels, datasets: [ { label: 'Заощадження', data: state.history.savingsData, borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.4)', fill: 'origin', pointRadius: 0, borderWidth: 1, stack: 'player' }, { label: 'Инвестиции', data: state.history.investmentsData, borderColor: '#6366F1', backgroundColor: 'rgba(99, 102, 241, 0.4)', fill: '-1', pointRadius: 0, borderWidth: 1, stack: 'player' }, { label: 'Джо', data: state.history.rivalData, borderColor: '#94A3B8', borderDash: [5, 5], fill: false, tension: 0.4, pointRadius: 0, borderWidth: 2, stack: 'rival' } ] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 8, font: { size: 10 }, usePointStyle: true } }, tooltip: { mode: 'index', intersect: false, callbacks: { label: function(context) { return context.dataset.label + ': $' + Math.floor(context.parsed.y).toLocaleString(); } } } }, scales: { x: { display: false }, y: { stacked: true, grid: { borderDash: [4, 4], color: '#f1f5f9' }, ticks: { callback: function(value) { return '$' + Math.floor(value).toLocaleString(); } } } } } }); }
+        window.closeReport = function() { els.reportPanel.classList.remove('open'); els.mobileOverlay.classList.add('opacity-0'); setTimeout(() => els.mobileOverlay.classList.add('hidden'), 300); }
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
